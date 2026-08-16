@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "Routine AI",
+    "slug": "routine-ai-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -43,8 +43,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "797721e0-bcf1-4f02-bd3b-865146beae1a"
+        "projectId": "0e4a116f-31b6-40b4-a4e9-cb427353a63f"
       }
-    }
+    },
+    "owner": "vijay905754"
   }
 }
