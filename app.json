@@ -8,9 +8,11 @@
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.routineai.frontend",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.routineai.frontend",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -37,6 +39,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "797721e0-bcf1-4f02-bd3b-865146beae1a"
+      }
     }
   }
 }
