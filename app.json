@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Remio",
-    "slug": "remio",
+    "slug": "routine-ai-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
