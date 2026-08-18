@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,13 +24,15 @@ import {
   Sparkles,
   Sliders,
   Check,
+  Wand2,
 } from 'lucide-react-native';
-import { colors } from '../../theme/colors';
 import { radii } from '../../theme/radii';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useTaskStore } from '../../store/useTaskStore';
+import { useTheme } from '../../hooks/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
+import { api } from '../../services/api';
 
 interface CategoryGridItem {
   id: string;
@@ -46,66 +49,143 @@ const CATEGORY_ITEMS: CategoryGridItem[] = [
   { id: 'pets', name: 'Pets', emoji: '🐶', icon: ({ color, size }) => <PawPrint size={size} color={color} /> },
   { id: 'personal', name: 'Personal', emoji: '✂️', icon: ({ color, size }) => <Scissors size={size} color={color} /> },
   { id: 'docs', name: 'Docs', emoji: '📄', icon: ({ color, size }) => <FileText size={size} color={color} /> },
-  { id: 'custom', name: 'Custom', emoji: '➕', icon: ({ color, size }) => <Plus size={size} color={color} /> },
+  { id: 'custom', name: 'Custom', emoji: '✨', icon: ({ color, size }) => <Plus size={size} color={color} /> },
 ];
 
 export default function AddTaskScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const haptics = useHaptics();
-  const addTask = useTaskStore((s) => s.addTask);
+  const createTask = useTaskStore((s) => s.createTask);
 
   const [title, setTitle] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('personal');
-  const [lastCompletedDate, setLastCompletedDate] = useState('2026-05-15');
+  const [lastCompletedDate, setLastCompletedDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
   const [reminderType, setReminderType] = useState<'ai' | 'manual'>('ai');
+  const [reminderTime, setReminderTime] = useState('09:00');
   const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [parsingAi, setParsingAi] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [showAiParser, setShowAiParser] = useState(false);
 
-  const handleSave = () => {
+  const handleAiParse = async () => {
+    if (!aiPrompt.trim()) {
+      Alert.alert('AI Helper', 'Enter a prompt like: "Water the snake plant every 2 weeks"');
+      return;
+    }
+
+    try {
+      setParsingAi(true);
+      haptics.light();
+      const parsed = await api.parseTask(aiPrompt.trim());
+      if (parsed) {
+        if (parsed.title) setTitle(parsed.title);
+        if (parsed.category) {
+          const matched = CATEGORY_ITEMS.find((c) => c.id === parsed.category.toLowerCase());
+          if (matched) setSelectedCategory(matched.id);
+        }
+        if (parsed.reminderTime) setReminderTime(parsed.reminderTime);
+        if (parsed.notes) setNotes(parsed.notes);
+        haptics.success();
+        setShowAiParser(false);
+      }
+    } catch {
+      Alert.alert('AI Assist', 'Could not parse prompt. You can enter details manually.');
+    } finally {
+      setParsingAi(false);
+    }
+  };
+
+  const handleSave = async () => {
     if (!title.trim()) {
+      haptics.error();
       Alert.alert('Missing Name', 'Please enter a task name.');
       return;
     }
 
-    haptics.success();
-    const catItem = CATEGORY_ITEMS.find((c) => c.id === selectedCategory) || CATEGORY_ITEMS[5];
+    try {
+      setLoading(true);
+      haptics.success();
 
-    addTask({
-      title: title.trim(),
-      emoji: catItem.emoji,
-      category: selectedCategory,
-      intervalDays: 30,
-      lastCompletedDate: lastCompletedDate || new Date().toISOString().split('T')[0],
-      nextDueDate: '2026-06-15',
-      dueLabel: 'Next Week',
-      smartWindowStatus: 'Open',
-      confidence: 94,
-      reminderType,
-      notes: notes.trim(),
-    });
+      await createTask({
+        title: title.trim(),
+        category: selectedCategory,
+        description: notes.trim() || undefined,
+        reminderEnabled: reminderType === 'ai',
+        reminderTime: reminderTime,
+        lastCompletedDate: lastCompletedDate || undefined,
+      });
 
-    router.back();
+      router.back();
+    } catch (err: any) {
+      haptics.error();
+      Alert.alert('Save Failed', err.message || 'Could not create task.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Top Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && styles.btnPressed]}
         >
-          <ArrowLeft size={24} color="#8C351B" />
+          <ArrowLeft size={24} color={theme.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Add New Task</Text>
-        <View style={styles.placeholder} />
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Add New Task</Text>
+        <Pressable
+          onPress={() => setShowAiParser(!showAiParser)}
+          style={({ pressed }) => [styles.aiHeaderBtn, pressed && styles.btnPressed]}
+        >
+          <Wand2 size={20} color={theme.coral} />
+        </Pressable>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* AI Natural Language Bar */}
+        {showAiParser && (
+          <View
+            style={[
+              styles.aiParserBox,
+              {
+                backgroundColor: theme.coralLight,
+                borderColor: theme.coral,
+              },
+            ]}
+          >
+            <View style={styles.aiParserHeader}>
+              <Sparkles size={16} color={theme.coral} />
+              <Text style={[styles.aiParserTitle, { color: theme.coral }]}>
+                AI Natural Language Setup
+              </Text>
+            </View>
+            <Input
+              placeholder="e.g. Change car engine oil every 6 months"
+              value={aiPrompt}
+              onChangeText={setAiPrompt}
+              containerStyle={styles.aiInput}
+            />
+            <Button
+              title={parsingAi ? 'Analyzing...' : 'Auto-Fill with AI ✨'}
+              onPress={handleAiParse}
+              variant="coral"
+              size="sm"
+              disabled={parsingAi}
+            />
+          </View>
+        )}
+
         {/* Task Name */}
-        <Text style={styles.fieldLabel}>Task Name</Text>
+        <Text style={[styles.fieldLabel, { color: theme.text }]}>Task Name</Text>
         <Input
           placeholder="Example: Haircut"
           value={title}
@@ -114,7 +194,7 @@ export default function AddTaskScreen() {
         />
 
         {/* Category Grid */}
-        <Text style={styles.fieldLabel}>Category</Text>
+        <Text style={[styles.fieldLabel, { color: theme.text }]}>Category</Text>
         <View style={styles.categoryGrid}>
           {CATEGORY_ITEMS.map((cat) => {
             const isSelected = selectedCategory === cat.id;
@@ -127,19 +207,25 @@ export default function AddTaskScreen() {
                 }}
                 style={[
                   styles.categoryTile,
-                  isSelected ? styles.categoryTileActive : styles.categoryTileInactive,
+                  {
+                    backgroundColor: isSelected ? theme.coralLight : theme.cardMuted,
+                    borderColor: isSelected ? theme.coral : 'transparent',
+                  },
                 ]}
               >
                 <View style={styles.catIconContainer}>
                   {cat.icon({
-                    color: isSelected ? colors.coral : colors.primaryText,
+                    color: isSelected ? theme.coral : theme.text,
                     size: 24,
                   })}
                 </View>
                 <Text
                   style={[
                     styles.categoryName,
-                    isSelected ? styles.catNameActive : styles.catNameInactive,
+                    {
+                      color: isSelected ? theme.coral : theme.text,
+                      fontWeight: isSelected ? '700' : '600',
+                    },
                   ]}
                   numberOfLines={1}
                 >
@@ -151,18 +237,23 @@ export default function AddTaskScreen() {
         </View>
 
         {/* Last Completed Date */}
-        <Text style={styles.fieldLabel}>Last Completed</Text>
+        <Text style={[styles.fieldLabel, { color: theme.text }]}>Last Completed Date</Text>
         <Input
-          placeholder="mm/dd/yyyy"
+          placeholder="YYYY-MM-DD"
           value={lastCompletedDate}
           onChangeText={setLastCompletedDate}
-          leftIcon={<Calendar size={20} color={colors.secondaryText} />}
+          leftIcon={<Calendar size={20} color={theme.secondaryText} />}
           containerStyle={styles.inputWrapper}
         />
 
         {/* Reminder Type Segment */}
-        <Text style={styles.fieldLabel}>Reminder Type</Text>
-        <View style={styles.segmentContainer}>
+        <Text style={[styles.fieldLabel, { color: theme.text }]}>Reminder Type</Text>
+        <View
+          style={[
+            styles.segmentContainer,
+            { backgroundColor: theme.cardMuted },
+          ]}
+        >
           <Pressable
             onPress={() => {
               haptics.light();
@@ -170,17 +261,17 @@ export default function AddTaskScreen() {
             }}
             style={[
               styles.segmentBtn,
-              reminderType === 'ai' ? styles.segmentActive : styles.segmentInactive,
+              reminderType === 'ai' && { backgroundColor: theme.coral },
             ]}
           >
             <Sparkles
               size={18}
-              color={reminderType === 'ai' ? '#FFFFFF' : colors.primaryText}
+              color={reminderType === 'ai' ? '#FFFFFF' : theme.text}
             />
             <Text
               style={[
                 styles.segmentText,
-                reminderType === 'ai' ? styles.segmentTextActive : styles.segmentTextInactive,
+                { color: reminderType === 'ai' ? '#FFFFFF' : theme.text },
               ]}
             >
               AI Smart
@@ -194,17 +285,17 @@ export default function AddTaskScreen() {
             }}
             style={[
               styles.segmentBtn,
-              reminderType === 'manual' ? styles.segmentActive : styles.segmentInactive,
+              reminderType === 'manual' && { backgroundColor: theme.coral },
             ]}
           >
             <Sliders
               size={18}
-              color={reminderType === 'manual' ? '#FFFFFF' : colors.primaryText}
+              color={reminderType === 'manual' ? '#FFFFFF' : theme.text}
             />
             <Text
               style={[
                 styles.segmentText,
-                reminderType === 'manual' ? styles.segmentTextActive : styles.segmentTextInactive,
+                { color: reminderType === 'manual' ? '#FFFFFF' : theme.text },
               ]}
             >
               Manual
@@ -212,28 +303,29 @@ export default function AddTaskScreen() {
           </Pressable>
         </View>
 
-        <Text style={styles.reminderExplainer}>
-          RoutineAI will intelligently schedule this based on optimal maintenance windows.
+        <Text style={[styles.reminderExplainer, { color: theme.secondaryText }]}>
+          Routine AI will automatically predict optimal recurring intervals based on your actual completion habits.
         </Text>
 
         {/* Optional Notes */}
-        <Text style={styles.fieldLabel}>Optional Notes</Text>
+        <Text style={[styles.fieldLabel, { color: theme.text }]}>Optional Notes</Text>
         <Input
-          placeholder="Add any details here..."
+          placeholder="Add details, sizes, model numbers, or specifics..."
           value={notes}
           onChangeText={setNotes}
           multiline
-          numberOfLines={4}
+          numberOfLines={3}
           containerStyle={styles.inputWrapper}
         />
 
         {/* Save Button */}
         <View style={styles.buttonWrapper}>
           <Button
-            title="Save Task"
+            title={loading ? 'Saving Routine...' : 'Save Routine'}
             onPress={handleSave}
             variant="coral"
             size="lg"
+            disabled={loading}
             icon={<Check size={20} color="#FFFFFF" strokeWidth={3} />}
           />
         </View>
@@ -245,7 +337,6 @@ export default function AddTaskScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF8F6',
   },
   header: {
     height: 56,
@@ -257,110 +348,97 @@ const styles = StyleSheet.create({
   backBtn: {
     padding: 6,
   },
+  aiHeaderBtn: {
+    padding: 6,
+  },
   btnPressed: {
     opacity: 0.6,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
-    color: '#8C351B',
     letterSpacing: -0.3,
-  },
-  placeholder: {
-    width: 36,
   },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 40,
   },
-  fieldLabel: {
-    fontSize: 16,
+  aiParserBox: {
+    borderRadius: radii['2xl'],
+    borderWidth: 1.5,
+    padding: 16,
+    marginBottom: 20,
+    gap: 10,
+  },
+  aiParserHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  aiParserTitle: {
+    fontSize: 14,
     fontWeight: '700',
-    color: colors.primaryText,
-    marginBottom: 10,
+  },
+  aiInput: {
+    marginBottom: 4,
+  },
+  fieldLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 8,
   },
   inputWrapper: {
-    marginBottom: 22,
+    marginBottom: 20,
   },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 24,
+    gap: 10,
+    marginBottom: 20,
   },
   categoryTile: {
-    width: '22%',
-    height: 84,
+    width: '22.5%',
+    height: 80,
     borderRadius: radii['2xl'],
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 8,
+    padding: 6,
     borderWidth: 1.5,
   },
-  categoryTileActive: {
-    backgroundColor: '#FFF0ED',
-    borderColor: colors.coral,
-  },
-  categoryTileInactive: {
-    backgroundColor: '#F5ECE8',
-    borderColor: 'transparent',
-  },
   catIconContainer: {
-    marginBottom: 6,
+    marginBottom: 4,
   },
   categoryName: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
     textAlign: 'center',
-  },
-  catNameActive: {
-    color: colors.coral,
-    fontWeight: '700',
-  },
-  catNameInactive: {
-    color: colors.primaryText,
   },
   segmentContainer: {
     flexDirection: 'row',
-    backgroundColor: '#F5ECE8',
     borderRadius: radii.full,
     padding: 4,
     gap: 6,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   segmentBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: radii.full,
     gap: 8,
   },
-  segmentActive: {
-    backgroundColor: colors.coral,
-  },
-  segmentInactive: {
-    backgroundColor: 'transparent',
-  },
   segmentText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-  },
-  segmentTextActive: {
-    color: '#FFFFFF',
-  },
-  segmentTextInactive: {
-    color: colors.primaryText,
   },
   reminderExplainer: {
     fontSize: 13,
-    color: colors.secondaryText,
     lineHeight: 18,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   buttonWrapper: {
-    marginTop: 10,
+    marginTop: 8,
   },
 });

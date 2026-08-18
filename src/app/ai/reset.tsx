@@ -21,20 +21,18 @@ import {
   AlertTriangle,
   Trash2,
 } from 'lucide-react-native';
-import { colors } from '../../theme/colors';
 import { radii } from '../../theme/radii';
-import { Avatar } from '../../components/ui/Avatar';
 import { Checkbox } from '../../components/ui/Checkbox';
 import { Button } from '../../components/ui/Button';
 import { useAIStore } from '../../store/useAIStore';
 import { useTaskStore } from '../../store/useTaskStore';
-import { useUserStore } from '../../store/useUserStore';
+import { useTheme } from '../../hooks/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
 
 export default function ResetAIHistoryScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const haptics = useHaptics();
-  const user = useUserStore((s) => s.user);
   const resetAIData = useAIStore((s) => s.resetAIData);
   const clearHistory = useTaskStore((s) => s.clearHistory);
 
@@ -59,12 +57,12 @@ export default function ResetAIHistoryScreen() {
     haptics.heavy();
 
     Alert.alert(
-      'Confirm Permanent Reset',
-      'Are you absolutely sure? All selected AI models and history logs will be wiped.',
+      'Confirm Model Reset',
+      'Are you sure? This will wipe trained AI predictive models and clear recent history logs.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset Everything',
+          text: 'Reset AI Data',
           style: 'destructive',
           onPress: () => {
             haptics.error();
@@ -76,7 +74,7 @@ export default function ResetAIHistoryScreen() {
             if (clearHistoryLog) {
               clearHistory();
             }
-            Alert.alert('AI Reset Complete', 'Your AI intelligence is now set to factory fresh state.');
+            Alert.alert('AI Reset Complete', 'Your AI intelligence models have been refreshed.');
             router.back();
           },
         },
@@ -89,17 +87,17 @@ export default function ResetAIHistoryScreen() {
   }));
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && styles.btnPressed]}
         >
-          <Avatar url={user.avatarUrl} size={36} />
+          <ArrowLeft size={24} color={theme.text} />
         </Pressable>
-        <Text style={styles.headerBrand}>RoutineAI</Text>
-        <Sparkles size={22} color={colors.primary} />
+        <Text style={[styles.headerBrand, { color: theme.text }]}>Reset AI</Text>
+        <Sparkles size={22} color={theme.coral} />
       </View>
 
       <ScrollView
@@ -108,22 +106,38 @@ export default function ResetAIHistoryScreen() {
       >
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={styles.title}>Reset AI History</Text>
-          <Text style={styles.subtitle}>
-            Clear your prediction data and start fresh.
+          <Text style={[styles.title, { color: theme.text }]}>Reset Prediction Data</Text>
+          <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
+            Clear trained models and start fresh with default heuristics.
           </Text>
         </View>
 
         {/* Warning Alert Box */}
-        <View style={styles.warningBox}>
-          <AlertTriangle size={24} color={colors.primaryText} style={styles.warningIcon} />
-          <Text style={styles.warningText}>
-            This action cannot be undone. All learned patterns, confidence levels, and prediction windows for your tasks will be permanently deleted.
+        <View
+          style={[
+            styles.warningBox,
+            {
+              backgroundColor: theme.cardMuted,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <AlertTriangle size={24} color={theme.coral} style={styles.warningIcon} />
+          <Text style={[styles.warningText, { color: theme.text }]}>
+            All learned intervals and confidence models for your tasks will be reset to factory default heuristics.
           </Text>
         </View>
 
         {/* Checkbox Options Card */}
-        <View style={styles.checkboxCard}>
+        <View
+          style={[
+            styles.checkboxCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
           {/* Option 1: Reset All Task Patterns */}
           <Pressable
             onPress={() => {
@@ -132,7 +146,9 @@ export default function ResetAIHistoryScreen() {
             }}
             style={styles.checkboxRow}
           >
-            <Text style={styles.checkboxLabel}>Reset All Task Patterns</Text>
+            <Text style={[styles.checkboxLabel, { color: theme.text }]}>
+              Reset Task Pattern Weights
+            </Text>
             <Checkbox
               checked={resetPatterns}
               onToggle={() => setResetPatterns(!resetPatterns)}
@@ -140,7 +156,7 @@ export default function ResetAIHistoryScreen() {
             />
           </Pressable>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: theme.divider }]} />
 
           {/* Option 2: Reset Global Confidence Model */}
           <Pressable
@@ -150,7 +166,9 @@ export default function ResetAIHistoryScreen() {
             }}
             style={styles.checkboxRow}
           >
-            <Text style={styles.checkboxLabel}>Reset Global Confidence Model</Text>
+            <Text style={[styles.checkboxLabel, { color: theme.text }]}>
+              Reset Confidence Thresholds
+            </Text>
             <Checkbox
               checked={resetConfidence}
               onToggle={() => setResetConfidence(!resetConfidence)}
@@ -158,7 +176,7 @@ export default function ResetAIHistoryScreen() {
             />
           </Pressable>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: theme.divider }]} />
 
           {/* Option 3: Clear History Log */}
           <Pressable
@@ -168,7 +186,9 @@ export default function ResetAIHistoryScreen() {
             }}
             style={styles.checkboxRow}
           >
-            <Text style={styles.checkboxLabel}>Clear History Log</Text>
+            <Text style={[styles.checkboxLabel, { color: theme.text }]}>
+              Clear Local Completion Logs
+            </Text>
             <Checkbox
               checked={clearHistoryLog}
               onToggle={() => setClearHistoryLog(!clearHistoryLog)}
@@ -182,7 +202,7 @@ export default function ResetAIHistoryScreen() {
       <View style={styles.footerArea}>
         <Animated.View style={[{ width: '100%' }, shakeStyle]}>
           <Button
-            title="Reset AI Data"
+            title="Reset AI Models"
             onPress={handleResetConfirm}
             variant="primary"
             size="lg"
@@ -194,7 +214,7 @@ export default function ResetAIHistoryScreen() {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.cancelBtn, pressed && styles.btnPressed]}
         >
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={[styles.cancelText, { color: theme.secondaryText }]}>Cancel</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -204,7 +224,6 @@ export default function ResetAIHistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'space-between',
   },
   header: {
@@ -223,7 +242,6 @@ const styles = StyleSheet.create({
   headerBrand: {
     fontSize: 20,
     fontWeight: '800',
-    color: colors.primaryText,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -234,22 +252,19 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
-    color: colors.primaryText,
     letterSpacing: -0.8,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 15,
-    color: colors.secondaryText,
     lineHeight: 22,
   },
   warningBox: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
     padding: 18,
+    borderRadius: radii['2xl'],
     flexDirection: 'row',
     gap: 14,
     marginBottom: 24,
@@ -260,14 +275,12 @@ const styles = StyleSheet.create({
   warningText: {
     flex: 1,
     fontSize: 14,
-    color: colors.primaryText,
     lineHeight: 22,
     fontWeight: '500',
   },
   checkboxCard: {
-    backgroundColor: '#FFFFFF',
+    borderRadius: radii['2xl'],
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     overflow: 'hidden',
   },
   checkboxRow: {
@@ -278,13 +291,11 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   checkboxLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: colors.primaryText,
   },
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
   },
   footerArea: {
     paddingHorizontal: 20,
@@ -299,6 +310,5 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.secondaryText,
   },
 });

@@ -12,7 +12,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
   GripVertical,
-  Edit2,
   Plus,
   Home,
   Car,
@@ -21,15 +20,17 @@ import {
   PawPrint,
   User,
   FileText,
+  Trash2,
 } from 'lucide-react-native';
-import { colors } from '../../theme/colors';
 import { radii } from '../../theme/radii';
 import { Category } from '../../types';
 import { useTaskStore } from '../../store/useTaskStore';
+import { useTheme } from '../../hooks/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
 
 export default function CategoriesManagementScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const haptics = useHaptics();
   const categories = useTaskStore((s) => s.categories);
   const addCategory = useTaskStore((s) => s.addCategory);
@@ -38,20 +39,20 @@ export default function CategoriesManagementScreen() {
   const getCategoryIcon = (name: string) => {
     switch (name.toLowerCase()) {
       case 'home':
-        return <Home size={22} color={colors.primaryText} />;
+        return <Home size={22} color={theme.text} />;
       case 'car':
-        return <Car size={22} color={colors.primaryText} />;
+        return <Car size={22} color={theme.text} />;
       case 'health':
-        return <Pill size={22} color={colors.primaryText} />;
+        return <Pill size={22} color={theme.text} />;
       case 'plants':
-        return <Sprout size={22} color={colors.primaryText} />;
+        return <Sprout size={22} color={theme.text} />;
       case 'pets':
-        return <PawPrint size={22} color={colors.primaryText} />;
+        return <PawPrint size={22} color={theme.text} />;
       case 'personal':
-        return <User size={22} color={colors.primaryText} />;
+        return <User size={22} color={theme.text} />;
       case 'documents':
       default:
-        return <FileText size={22} color={colors.primaryText} />;
+        return <FileText size={22} color={theme.text} />;
     }
   };
 
@@ -68,35 +69,35 @@ export default function CategoriesManagementScreen() {
           }
         })
       : addCategory({
-          name: 'Fitness',
-          emoji: '💪',
-          iconName: 'Dumbbell',
+          name: `Custom ${categories.length + 1}`,
+          emoji: '✨',
+          iconName: 'Sparkles',
         });
   };
 
-  const handleEditCategory = (cat: Category) => {
+  const handleDeleteCategory = (cat: Category) => {
     haptics.light();
-    Alert.alert(cat.name, 'Category Options', [
+    Alert.alert('Remove Category', `Are you sure you want to remove "${cat.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: () => deleteCategory(cat.id),
       },
-      { text: 'Cancel', style: 'cancel' },
     ]);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && styles.btnPressed]}
         >
-          <ArrowLeft size={24} color={colors.primary} />
+          <ArrowLeft size={24} color={theme.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Categories</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Categories</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -106,29 +107,44 @@ export default function CategoriesManagementScreen() {
       >
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={styles.title}>Manage your life areas</Text>
-          <Text style={styles.subtitle}>
-            Drag to reorder how they appear in your dashboard.
+          <Text style={[styles.title, { color: theme.text }]}>Routine Categories</Text>
+          <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
+            Organize your routines by life areas and categories.
           </Text>
         </View>
 
         {/* Categories List */}
         <View style={styles.listContainer}>
           {categories.map((cat) => (
-            <View key={cat.id} style={styles.categoryRow}>
+            <View
+              key={cat.id}
+              style={[
+                styles.categoryRow,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
               <View style={styles.leftGroup}>
-                <GripVertical size={20} color="#D1D5DB" style={styles.dragHandle} />
-                <View style={styles.iconCircle}>
+                <View
+                  style={[
+                    styles.iconCircle,
+                    { backgroundColor: theme.cardMuted },
+                  ]}
+                >
                   {getCategoryIcon(cat.name)}
                 </View>
-                <Text style={styles.categoryName}>{cat.name}</Text>
+                <Text style={[styles.categoryName, { color: theme.text }]}>
+                  {cat.name}
+                </Text>
               </View>
 
               <Pressable
-                onPress={() => handleEditCategory(cat)}
-                style={({ pressed }) => [styles.editBtn, pressed && styles.btnPressed]}
+                onPress={() => handleDeleteCategory(cat)}
+                style={({ pressed }) => [styles.deleteBtn, pressed && styles.btnPressed]}
               >
-                <Edit2 size={18} color="#9CA3AF" />
+                <Trash2 size={18} color={theme.mutedText} />
               </Pressable>
             </View>
           ))}
@@ -137,12 +153,21 @@ export default function CategoriesManagementScreen() {
         {/* Add New Category Dashed Box */}
         <Pressable
           onPress={handleAddNewCategory}
-          style={({ pressed }) => [styles.addCardDashed, pressed && styles.cardPressed]}
+          style={({ pressed }) => [
+            styles.addCardDashed,
+            {
+              backgroundColor: theme.cardMuted,
+              borderColor: theme.border,
+            },
+            pressed && styles.cardPressed,
+          ]}
         >
-          <View style={styles.plusCircle}>
-            <Plus size={26} color="#FFFFFF" strokeWidth={2.5} />
+          <View style={[styles.plusCircle, { backgroundColor: theme.coral }]}>
+            <Plus size={24} color="#FFFFFF" strokeWidth={2.5} />
           </View>
-          <Text style={styles.addCategoryText}>Add New Category</Text>
+          <Text style={[styles.addCategoryText, { color: theme.text }]}>
+            Add New Category
+          </Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -152,7 +177,6 @@ export default function CategoriesManagementScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     height: 56,
@@ -170,7 +194,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: colors.primaryText,
   },
   placeholder: {
     width: 36,
@@ -184,76 +207,68 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '800',
-    color: colors.primaryText,
     letterSpacing: -0.5,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 15,
-    color: colors.secondaryText,
     lineHeight: 22,
   },
   listContainer: {
-    gap: 16,
-    marginBottom: 28,
+    gap: 12,
+    marginBottom: 24,
   },
   categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: radii['2xl'],
+    borderWidth: 1,
   },
   leftGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-  },
-  dragHandle: {
-    marginRight: -4,
+    gap: 14,
   },
   iconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#F3F4F6',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   categoryName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: colors.primaryText,
   },
-  editBtn: {
+  deleteBtn: {
     padding: 8,
   },
   addCardDashed: {
     borderWidth: 1.5,
-    borderColor: '#D1D5DB',
     borderStyle: 'dashed',
     borderRadius: radii['2xl'],
-    backgroundColor: '#FAFAFA',
-    paddingVertical: 32,
+    paddingVertical: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 10,
   },
   cardPressed: {
-    backgroundColor: '#F3F4F6',
+    opacity: 0.8,
   },
   plusCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.primary,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addCategoryText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: colors.primaryText,
   },
 });

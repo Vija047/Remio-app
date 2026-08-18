@@ -8,17 +8,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  ArrowLeft,
-  Sparkles,
-  Info,
-} from 'lucide-react-native';
-import { colors } from '../../theme/colors';
+import { ArrowLeft, Sparkles, Info } from 'lucide-react-native';
 import { radii } from '../../theme/radii';
-import { Avatar } from '../../components/ui/Avatar';
 import { ConfidenceLevel } from '../../types';
 import { useAIStore } from '../../store/useAIStore';
-import { useUserStore } from '../../store/useUserStore';
+import { useTheme } from '../../hooks/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
 
 interface ConfidenceOption {
@@ -31,29 +25,29 @@ const CONFIDENCE_OPTIONS: ConfidenceOption[] = [
   {
     id: 'precise',
     title: 'Precise (98%+)',
-    desc: 'Only notifies when the prediction is near-certain.',
+    desc: 'Only alerts when predictive accuracy is near certain.',
   },
   {
     id: 'high',
     title: 'High (90%+)',
-    desc: 'The perfect balance of accuracy and foresight.',
+    desc: 'The optimal balance of accuracy and foresight.',
   },
   {
     id: 'balanced',
     title: 'Balanced (75%+)',
-    desc: 'More frequent suggestions with slightly lower accuracy.',
+    desc: 'More frequent proactive suggestions.',
   },
   {
     id: 'experimental',
     title: 'Experimental (50%+)',
-    desc: 'Get early-stage predictions as the AI learns.',
+    desc: 'Early-stage suggestions as the model trains on your completions.',
   },
 ];
 
 export default function PredictionConfidenceScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const haptics = useHaptics();
-  const user = useUserStore((s) => s.user);
   const confidenceLevel = useAIStore((s) => s.confidenceLevel);
   const setConfidenceLevel = useAIStore((s) => s.setConfidenceLevel);
 
@@ -63,17 +57,17 @@ export default function PredictionConfidenceScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Top Header */}
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && styles.btnPressed]}
         >
-          <ArrowLeft size={24} color={colors.primary} />
+          <ArrowLeft size={24} color={theme.text} />
         </Pressable>
-        <Text style={styles.headerBrand}>RoutineAI</Text>
-        <Avatar url={user.avatarUrl} size={36} />
+        <Text style={[styles.headerBrand, { color: theme.text }]}>Confidence</Text>
+        <View style={styles.placeholder} />
       </View>
 
       <ScrollView
@@ -82,17 +76,27 @@ export default function PredictionConfidenceScreen() {
       >
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={styles.title}>Prediction Confidence</Text>
-          <Text style={styles.subtitle}>
-            Adjust how certain RoutineAI must be before sending a smart notification.
+          <Text style={[styles.title, { color: theme.text }]}>Prediction Confidence</Text>
+          <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
+            Adjust how certain Routine AI must be before triggering smart reminders.
           </Text>
         </View>
 
         {/* Current Level Card */}
-        <View style={styles.currentLevelCard}>
+        <View
+          style={[
+            styles.currentLevelCard,
+            {
+              backgroundColor: theme.cardMuted,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
           <View style={styles.currentLeft}>
-            <Text style={styles.microLabel}>CURRENT LEVEL</Text>
-            <Text style={styles.currentValueTitle}>
+            <Text style={[styles.microLabel, { color: theme.mutedText }]}>
+              CURRENT LEVEL
+            </Text>
+            <Text style={[styles.currentValueTitle, { color: theme.text }]}>
               {confidenceLevel === 'precise'
                 ? 'Precise (98%+)'
                 : confidenceLevel === 'balanced'
@@ -101,40 +105,60 @@ export default function PredictionConfidenceScreen() {
                 ? 'Experimental (50%+)'
                 : 'High (90%+)'}
             </Text>
-            <Text style={styles.currentSubtitle}>
-              Recommended balance of accuracy and foresight.
+            <Text style={[styles.currentSubtitle, { color: theme.secondaryText }]}>
+              Adaptive confidence threshold applied to routine dates.
             </Text>
           </View>
 
-          <View style={styles.sparkleCircle}>
-            <Sparkles size={20} color={colors.primary} />
+          <View style={[styles.sparkleCircle, { backgroundColor: theme.coralLight }]}>
+            <Sparkles size={20} color={theme.coral} />
           </View>
         </View>
 
         {/* Radio Options List Card */}
-        <View style={styles.optionsCard}>
+        <View
+          style={[
+            styles.optionsCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
           {CONFIDENCE_OPTIONS.map((opt, index) => {
             const isSelected = confidenceLevel === opt.id;
             return (
               <React.Fragment key={opt.id}>
-                {index > 0 && <View style={styles.divider} />}
+                {index > 0 && (
+                  <View style={[styles.divider, { backgroundColor: theme.divider }]} />
+                )}
                 <Pressable
                   onPress={() => handleSelect(opt.id)}
                   style={styles.optionRow}
                 >
-                  {/* Radio Indicator */}
                   <View
                     style={[
                       styles.radioOuter,
-                      isSelected && styles.radioOuterSelected,
+                      { borderColor: isSelected ? theme.coral : theme.border },
                     ]}
                   >
-                    {isSelected && <View style={styles.radioInner} />}
+                    {isSelected && (
+                      <View
+                        style={[
+                          styles.radioInner,
+                          { backgroundColor: theme.coral },
+                        ]}
+                      />
+                    )}
                   </View>
 
                   <View style={styles.optionTextContainer}>
-                    <Text style={styles.optionTitle}>{opt.title}</Text>
-                    <Text style={styles.optionDesc}>{opt.desc}</Text>
+                    <Text style={[styles.optionTitle, { color: theme.text }]}>
+                      {opt.title}
+                    </Text>
+                    <Text style={[styles.optionDesc, { color: theme.secondaryText }]}>
+                      {opt.desc}
+                    </Text>
                   </View>
                 </Pressable>
               </React.Fragment>
@@ -143,10 +167,18 @@ export default function PredictionConfidenceScreen() {
         </View>
 
         {/* Info Disclaimer Card */}
-        <View style={styles.infoCard}>
-          <Info size={20} color={colors.primaryText} style={styles.infoIcon} />
-          <Text style={styles.infoText}>
-            Higher confidence levels may result in fewer notifications but ensure higher reliability. Adjust this setting if you feel you are receiving too many incorrect suggestions or missing out on potential insights.
+        <View
+          style={[
+            styles.infoCard,
+            {
+              backgroundColor: theme.cardMuted,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
+          <Info size={20} color={theme.coral} style={styles.infoIcon} />
+          <Text style={[styles.infoText, { color: theme.secondaryText }]}>
+            Higher confidence levels require more task completions to train the model, ensuring rock-solid precision before sending alerts.
           </Text>
         </View>
       </ScrollView>
@@ -157,7 +189,6 @@ export default function PredictionConfidenceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     height: 56,
@@ -175,7 +206,9 @@ const styles = StyleSheet.create({
   headerBrand: {
     fontSize: 20,
     fontWeight: '800',
-    color: colors.primaryText,
+  },
+  placeholder: {
+    width: 36,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -188,21 +221,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '800',
-    color: colors.primaryText,
     letterSpacing: -0.6,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 15,
-    color: colors.secondaryText,
     lineHeight: 22,
   },
   currentLevelCard: {
-    backgroundColor: '#F8F9FA',
     borderRadius: radii['4xl'],
     padding: 22,
     borderWidth: 1,
-    borderColor: '#F0F0F2',
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
@@ -215,35 +244,29 @@ const styles = StyleSheet.create({
   microLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#8E8E93',
     letterSpacing: 0.8,
     marginBottom: 6,
   },
   currentValueTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: colors.primaryText,
     letterSpacing: -0.3,
     marginBottom: 6,
   },
   currentSubtitle: {
     fontSize: 14,
-    color: colors.secondaryText,
     lineHeight: 20,
   },
   sparkleCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#EAECEF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   optionsCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: radii['3xl'],
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     marginBottom: 20,
     overflow: 'hidden',
   },
@@ -258,19 +281,14 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
-  },
-  radioOuterSelected: {
-    borderColor: colors.primary,
   },
   radioInner: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: colors.primary,
   },
   optionTextContainer: {
     flex: 1,
@@ -278,26 +296,21 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.primaryText,
     marginBottom: 4,
   },
   optionDesc: {
     fontSize: 14,
-    color: colors.secondaryText,
     lineHeight: 20,
   },
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
   },
   infoCard: {
-    backgroundColor: '#F8F9FA',
     borderRadius: radii['3xl'],
     padding: 20,
     flexDirection: 'row',
     gap: 14,
     borderWidth: 1,
-    borderColor: '#F0F0F2',
   },
   infoIcon: {
     marginTop: 2,
@@ -305,7 +318,6 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: colors.secondaryText,
     lineHeight: 20,
   },
 });

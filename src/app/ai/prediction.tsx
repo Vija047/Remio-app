@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,48 +6,84 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
-  Scissors,
   Sparkles,
   History,
   Calendar,
   Brain,
+  FileText,
 } from 'lucide-react-native';
-import { colors } from '../../theme/colors';
 import { radii } from '../../theme/radii';
 import { Button } from '../../components/ui/Button';
 import { IntervalSpread } from '../../components/insights/IntervalSpread';
-import { HAIRCUT_PREDICTION_DETAIL } from '../../data/mock';
+import { useAIStore } from '../../store/useAIStore';
+import { useTaskStore } from '../../store/useTaskStore';
+import { useTheme } from '../../hooks/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
 
 export default function AIPredictionDetailsScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const haptics = useHaptics();
-  const detail = HAIRCUT_PREDICTION_DETAIL;
+  const params = useLocalSearchParams<{ id?: string; title?: string; emoji?: string }>();
+
+  const tasks = useTaskStore((s) => s.tasks);
+  const activePrediction = useAIStore((s) => s.activePrediction);
+  const fetchTaskPrediction = useAIStore((s) => s.fetchTaskPrediction);
+  const isLoading = useAIStore((s) => s.isLoading);
+
+  const targetTask = params.id
+    ? tasks.find((t) => t.id === params.id)
+    : tasks[0];
+
+  useEffect(() => {
+    if (targetTask) {
+      fetchTaskPrediction(targetTask.id, targetTask.title, targetTask.emoji);
+    }
+  }, [targetTask?.id]);
 
   const handleBookAppointment = () => {
     haptics.success();
     Alert.alert(
-      'Appointment Reminder Set',
-      'RoutineAI set an optimal heads-up alert for tomorrow at 10:00 AM.'
+      'Optimal Reminder Scheduled',
+      `Routine AI set a notification for your predicted optimal day: Day ${activePrediction?.bestDay || 30}.`
     );
   };
 
+  const detail = activePrediction || {
+    taskId: targetTask?.id || 'task-default',
+    title: targetTask?.title || 'Routine Task',
+    emoji: targetTask?.emoji || '✨',
+    confidence: targetTask?.confidence || 92,
+    avgIntervalDays: targetTask?.intervalDays || 30,
+    startDay: Math.max(1, (targetTask?.intervalDays || 30) - 4),
+    bestDay: targetTask?.intervalDays || 30,
+    deadlineDay: (targetTask?.intervalDays || 30) + 4,
+    idealWindowText: 'Between Day 26 – 34',
+    insightsText:
+      'Routine AI computed this schedule based on your completion history to keep you consistent without stress.',
+    learningLogicText:
+      'Each time you log a task completion, Routine AI refines its predictive model to match your natural schedule.',
+    lastPrediction: Math.max(1, (targetTask?.intervalDays || 30) - 2),
+    newPrediction: targetTask?.intervalDays || 30,
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && styles.btnPressed]}
         >
-          <ArrowLeft size={24} color={colors.primaryText} />
+          <ArrowLeft size={24} color={theme.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>AI Prediction</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>AI Prediction</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -56,24 +92,42 @@ export default function AIPredictionDetailsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Top Hero Card */}
-        <View style={styles.topCard}>
-          <View style={styles.iconCircle}>
-            <Scissors size={28} color={colors.primaryText} />
+        <View
+          style={[
+            styles.topCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
+          <View style={[styles.iconCircle, { backgroundColor: theme.cardMuted }]}>
+            <Text style={styles.emojiIcon}>{detail.emoji}</Text>
           </View>
 
-          <Text style={styles.taskTitle}>{detail.title}</Text>
+          <Text style={[styles.taskTitle, { color: theme.text }]}>{detail.title}</Text>
 
-          <View style={styles.confidenceBadge}>
-            <Sparkles size={12} color={colors.primaryText} />
-            <Text style={styles.confidenceBadgeText}>
+          <View
+            style={[
+              styles.confidenceBadge,
+              {
+                backgroundColor: theme.cardMuted,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <Sparkles size={13} color={theme.teal} />
+            <Text style={[styles.confidenceBadgeText, { color: theme.text }]}>
               Confidence: {detail.confidence}%
             </Text>
           </View>
 
           <View style={styles.intervalStatsRow}>
             <View style={styles.intervalStatCol}>
-              <Text style={styles.microLabel}>AVERAGE INTERVAL</Text>
-              <Text style={styles.intervalBigValue}>
+              <Text style={[styles.microLabel, { color: theme.mutedText }]}>
+                AVERAGE INTERVAL
+              </Text>
+              <Text style={[styles.intervalBigValue, { color: theme.text }]}>
                 {detail.avgIntervalDays} Days
               </Text>
             </View>
@@ -88,29 +142,57 @@ export default function AIPredictionDetailsScreen() {
         />
 
         {/* AI Insights Card */}
-        <View style={styles.insightsCard}>
+        <View
+          style={[
+            styles.insightsCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
           <View style={styles.cardHeaderRow}>
-            <View style={styles.brainIconCircle}>
-              <Brain size={18} color={colors.primaryText} />
+            <View style={[styles.brainIconCircle, { backgroundColor: theme.cardMuted }]}>
+              <Brain size={18} color={theme.coral} />
             </View>
-            <Text style={styles.insightsTitle}>AI Insights</Text>
+            <Text style={[styles.insightsTitle, { color: theme.text }]}>
+              Routine AI Insights
+            </Text>
           </View>
 
-          <Text style={styles.insightsBodyText}>{detail.insightsText}</Text>
+          <Text style={[styles.insightsBodyText, { color: theme.secondaryText }]}>
+            {detail.insightsText}
+          </Text>
         </View>
 
         {/* Model Learning Progress Card */}
-        <Text style={styles.sectionHeader}>MODEL LEARNING PROGRESS</Text>
-        <View style={styles.learningProgressCard}>
+        <Text style={[styles.sectionHeader, { color: theme.mutedText }]}>
+          MODEL LEARNING PROGRESS
+        </Text>
+        <View
+          style={[
+            styles.learningProgressCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
           <View style={styles.learningProgressRow}>
             <View style={styles.leftProgress}>
-              <History size={18} color={colors.primaryText} />
-              <Text style={styles.learningLabel}>Last Prediction</Text>
+              <History size={18} color={theme.text} />
+              <Text style={[styles.learningLabel, { color: theme.text }]}>
+                Calculated Interval
+              </Text>
             </View>
             <View style={styles.progressValuesRow}>
-              <Text style={styles.oldValueText}>{detail.lastPrediction} Days</Text>
-              <Text style={styles.arrowText}>→</Text>
-              <Text style={styles.newValueText}>{detail.newPrediction} Days</Text>
+              <Text style={[styles.oldValueText, { color: theme.mutedText }]}>
+                {detail.lastPrediction}d
+              </Text>
+              <Text style={[styles.arrowText, { color: theme.coral }]}>→</Text>
+              <Text style={[styles.newValueText, { color: theme.text }]}>
+                {detail.newPrediction} Days
+              </Text>
             </View>
           </View>
         </View>
@@ -118,7 +200,7 @@ export default function AIPredictionDetailsScreen() {
         {/* Bottom CTA Button */}
         <View style={styles.buttonWrapper}>
           <Button
-            title="Book Appointment Tomorrow"
+            title="Set Smart Reminder For Best Day"
             onPress={handleBookAppointment}
             variant="primary"
             size="lg"
@@ -133,7 +215,6 @@ export default function AIPredictionDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     height: 56,
@@ -151,7 +232,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: colors.primaryText,
     letterSpacing: -0.3,
   },
   placeholder: {
@@ -163,36 +243,34 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   topCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: radii['4xl'],
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     marginBottom: 16,
   },
   iconCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
   },
-  taskTitle: {
+  emojiIcon: {
     fontSize: 28,
+  },
+  taskTitle: {
+    fontSize: 26,
     fontWeight: '800',
-    color: colors.primaryText,
     letterSpacing: -0.5,
     marginBottom: 8,
+    textAlign: 'center',
   },
   confidenceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: radii.full,
@@ -202,7 +280,6 @@ const styles = StyleSheet.create({
   confidenceBadgeText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.primaryText,
   },
   intervalStatsRow: {
     alignItems: 'center',
@@ -213,21 +290,17 @@ const styles = StyleSheet.create({
   microLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#8E8E93',
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   intervalBigValue: {
     fontSize: 26,
     fontWeight: '800',
-    color: colors.primaryText,
   },
   insightsCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: radii['3xl'],
     padding: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     marginVertical: 12,
   },
   cardHeaderRow: {
@@ -240,35 +313,29 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   insightsTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: colors.primaryText,
   },
   insightsBodyText: {
     fontSize: 14,
-    color: colors.secondaryText,
     lineHeight: 22,
   },
   sectionHeader: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#8E8E93',
     letterSpacing: 0.8,
     marginTop: 16,
     marginBottom: 10,
     marginLeft: 4,
   },
   learningProgressCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: radii['3xl'],
     padding: 18,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     marginBottom: 24,
   },
   learningProgressRow: {
@@ -284,7 +351,6 @@ const styles = StyleSheet.create({
   learningLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.primaryText,
   },
   progressValuesRow: {
     flexDirection: 'row',
@@ -292,19 +358,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   oldValueText: {
-    fontSize: 15,
-    color: colors.mutedText,
+    fontSize: 14,
     textDecorationLine: 'line-through',
   },
   arrowText: {
     fontSize: 16,
-    color: colors.primary,
     fontWeight: '700',
   },
   newValueText: {
     fontSize: 16,
     fontWeight: '800',
-    color: colors.primaryText,
   },
   buttonWrapper: {
     marginTop: 8,

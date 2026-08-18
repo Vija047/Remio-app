@@ -1,24 +1,33 @@
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useOnboardingStore } from '../store/useOnboardingStore';
+import { useUserStore } from '../store/useUserStore';
 import { colors } from '../theme/colors';
 
 export default function Index() {
   const router = useRouter();
-  const isOnboardingCompleted = useOnboardingStore((s) => s.isOnboardingCompleted);
+  const initAuth = useUserStore((s) => s.initAuth);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isOnboardingCompleted) {
+    let isMounted = true;
+
+    async function checkAuth() {
+      const isAuth = await initAuth();
+      if (!isMounted) return;
+
+      if (isAuth) {
         router.replace('/today');
       } else {
         router.replace('/(onboarding)/splash');
       }
-    }, 100);
+    }
 
-    return () => clearTimeout(timer);
-  }, [isOnboardingCompleted]);
+    checkAuth();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <View style={styles.container}>

@@ -21,11 +21,10 @@ import {
   History,
   Sparkles,
 } from 'lucide-react-native';
-import { colors } from '../../theme/colors';
 import { radii } from '../../theme/radii';
 import { Button } from '../../components/ui/Button';
-import { SUBSCRIPTION_PLANS } from '../../data/mock';
 import { useUserStore } from '../../store/useUserStore';
+import { useTheme } from '../../hooks/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
 
 const PREMIUM_FEATURES = [
@@ -41,7 +40,9 @@ const PREMIUM_FEATURES = [
 
 export default function PremiumUpgradeScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const haptics = useHaptics();
+  const user = useUserStore((s) => s.user);
   const upgradeToPremium = useUserStore((s) => s.upgradeToPremium);
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | 'lifetime'>('yearly');
@@ -50,8 +51,8 @@ export default function PremiumUpgradeScreen() {
     haptics.success();
     upgradeToPremium(selectedPlan);
     Alert.alert(
-      'Welcome to RoutineAI Premium! ✨',
-      'You now have full access to unlimited tasks, AI smart predictions, and advanced insights.',
+      'Welcome to Routine AI Premium!',
+      'You now have full access to unlimited routines, deep AI predictions, and advanced habit analytics.',
       [
         {
           text: 'Continue',
@@ -62,16 +63,20 @@ export default function PremiumUpgradeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
-          style={({ pressed }) => [styles.closeBtn, pressed && styles.btnPressed]}
+          style={({ pressed }) => [
+            styles.closeBtn,
+            { backgroundColor: theme.cardMuted },
+            pressed && styles.btnPressed,
+          ]}
         >
-          <X size={20} color={colors.primaryText} />
+          <X size={20} color={theme.text} />
         </Pressable>
-        <Text style={styles.headerBrand}>RoutineAI</Text>
+        <Text style={[styles.headerBrand, { color: theme.text }]}>Routine AI</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -81,30 +86,52 @@ export default function PremiumUpgradeScreen() {
       >
         {/* Visual Hero Preview Card */}
         <View style={styles.heroPreview}>
-          <View style={styles.heroGlow}>
-            <Sparkles size={36} color="#FF5A36" />
+          <View
+            style={[
+              styles.heroGlow,
+              { backgroundColor: theme.coralLight, borderColor: theme.coral },
+            ]}
+          >
+            <Sparkles size={36} color={theme.coral} />
           </View>
         </View>
 
         {/* Headline */}
         <View style={styles.headlineArea}>
-          <Text style={styles.headline}>
-            Upgrade to RoutineAI{'\n'}Premium
+          <Text style={[styles.headline, { color: theme.text }]}>
+            Upgrade to Routine AI{'\n'}Premium
           </Text>
-          <Text style={styles.subheadline}>
-            Unlock the full power of AI Life Maintenance.
+          <Text style={[styles.subheadline, { color: theme.secondaryText }]}>
+            Unlock unlimited routine tracking and predictive intelligence.
           </Text>
         </View>
 
-        {/* Feature Grid (2x4) */}
-        <Text style={styles.sectionTitle}>Premium Features</Text>
+        {/* Feature Grid */}
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Premium Features</Text>
         <View style={styles.featureGrid}>
           {PREMIUM_FEATURES.map((item) => (
-            <View key={item.id} style={styles.featureTile}>
-              <View style={styles.featureIconCircle}>
-                {item.icon({ size: 20, color: colors.primaryText })}
+            <View
+              key={item.id}
+              style={[
+                styles.featureTile,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.featureIconCircle,
+                  { backgroundColor: theme.cardMuted },
+                ]}
+              >
+                {item.icon({ size: 20, color: theme.text })}
               </View>
-              <Text style={styles.featureTitle} numberOfLines={2}>
+              <Text
+                style={[styles.featureTitle, { color: theme.text }]}
+                numberOfLines={2}
+              >
                 {item.title}
               </Text>
             </View>
@@ -121,33 +148,17 @@ export default function PremiumUpgradeScreen() {
             }}
             style={[
               styles.planCard,
-              selectedPlan === 'monthly' && styles.planCardSelected,
+              {
+                backgroundColor: theme.card,
+                borderColor: selectedPlan === 'monthly' ? theme.coral : theme.cardBorder,
+              },
             ]}
           >
-            <Text style={styles.planName}>Monthly</Text>
+            <Text style={[styles.planName, { color: theme.text }]}>Monthly</Text>
             <View style={styles.priceRow}>
-              <Text style={styles.planPrice}>$9.99</Text>
-              <Text style={styles.planPeriod}>/mo</Text>
+              <Text style={[styles.planPrice, { color: theme.text }]}>$9.99</Text>
+              <Text style={[styles.planPeriod, { color: theme.secondaryText }]}>/mo</Text>
             </View>
-            <Pressable
-              onPress={() => {
-                haptics.light();
-                setSelectedPlan('monthly');
-              }}
-              style={[
-                styles.selectPlanBtn,
-                selectedPlan === 'monthly' && styles.selectPlanBtnDark,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.selectBtnText,
-                  selectedPlan === 'monthly' && styles.selectBtnTextDark,
-                ]}
-              >
-                Select Monthly
-              </Text>
-            </Pressable>
           </Pressable>
 
           {/* Yearly (RECOMMENDED) */}
@@ -159,39 +170,24 @@ export default function PremiumUpgradeScreen() {
             style={[
               styles.planCard,
               styles.recommendedCard,
-              selectedPlan === 'yearly' && styles.planCardSelected,
+              {
+                backgroundColor: theme.card,
+                borderColor: selectedPlan === 'yearly' ? theme.coral : theme.cardBorder,
+              },
             ]}
           >
-            <View style={styles.recommendedBadge}>
+            <View style={[styles.recommendedBadge, { backgroundColor: theme.coral }]}>
               <Text style={styles.recommendedBadgeText}>RECOMMENDED</Text>
             </View>
 
-            <Text style={styles.planName}>Yearly</Text>
+            <Text style={[styles.planName, { color: theme.text }]}>Yearly</Text>
             <View style={styles.priceRow}>
-              <Text style={styles.planPrice}>$79.99</Text>
-              <Text style={styles.planPeriod}>/yr</Text>
+              <Text style={[styles.planPrice, { color: theme.text }]}>$79.99</Text>
+              <Text style={[styles.planPeriod, { color: theme.secondaryText }]}>/yr</Text>
             </View>
-            <Text style={styles.savingsText}>Save 33% ($6.66/mo)</Text>
-
-            <Pressable
-              onPress={() => {
-                haptics.light();
-                setSelectedPlan('yearly');
-              }}
-              style={[
-                styles.selectPlanBtn,
-                selectedPlan === 'yearly' && styles.selectPlanBtnDark,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.selectBtnText,
-                  selectedPlan === 'yearly' && styles.selectBtnTextDark,
-                ]}
-              >
-                Select Yearly
-              </Text>
-            </Pressable>
+            <Text style={[styles.savingsText, { color: theme.coral }]}>
+              Save 33% ($6.66/mo)
+            </Text>
           </Pressable>
 
           {/* Lifetime */}
@@ -202,41 +198,26 @@ export default function PremiumUpgradeScreen() {
             }}
             style={[
               styles.planCard,
-              selectedPlan === 'lifetime' && styles.planCardSelected,
+              {
+                backgroundColor: theme.card,
+                borderColor: selectedPlan === 'lifetime' ? theme.coral : theme.cardBorder,
+              },
             ]}
           >
-            <Text style={styles.planName}>Lifetime</Text>
-            <Text style={styles.planPrice}>$249</Text>
-            <Text style={styles.savingsText}>One-time payment</Text>
-
-            <Pressable
-              onPress={() => {
-                haptics.light();
-                setSelectedPlan('lifetime');
-              }}
-              style={[
-                styles.selectPlanBtn,
-                selectedPlan === 'lifetime' && styles.selectPlanBtnDark,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.selectBtnText,
-                  selectedPlan === 'lifetime' && styles.selectBtnTextDark,
-                ]}
-              >
-                Select Lifetime
-              </Text>
-            </Pressable>
+            <Text style={[styles.planName, { color: theme.text }]}>Lifetime</Text>
+            <Text style={[styles.planPrice, { color: theme.text }]}>$249</Text>
+            <Text style={[styles.savingsText, { color: theme.secondaryText }]}>
+              One-time payment
+            </Text>
           </Pressable>
         </View>
 
         {/* Start Free Trial CTA */}
         <View style={styles.ctaArea}>
           <Button
-            title="Start Free Trial"
+            title="Activate Premium Access"
             onPress={handleStartTrial}
-            variant="primary"
+            variant="coral"
             size="lg"
           />
 
@@ -244,12 +225,10 @@ export default function PremiumUpgradeScreen() {
             onPress={() => router.back()}
             style={({ pressed }) => [styles.continueFreeBtn, pressed && styles.btnPressed]}
           >
-            <Text style={styles.continueFreeText}>Continue Free</Text>
+            <Text style={[styles.continueFreeText, { color: theme.secondaryText }]}>
+              Continue with Free Plan
+            </Text>
           </Pressable>
-
-          <Text style={styles.legalSubtext}>
-            Cancel Anytime. Powered by RevenueCat
-          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -259,7 +238,6 @@ export default function PremiumUpgradeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     height: 56,
@@ -272,7 +250,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -282,7 +259,6 @@ const styles = StyleSheet.create({
   headerBrand: {
     fontSize: 20,
     fontWeight: '800',
-    color: colors.primaryText,
   },
   placeholder: {
     width: 36,
@@ -293,20 +269,18 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   heroPreview: {
-    height: 140,
+    height: 120,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   heroGlow: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#FFF0ED',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FFD7CD',
   },
   headlineArea: {
     alignItems: 'center',
@@ -315,7 +289,6 @@ const styles = StyleSheet.create({
   headline: {
     fontSize: 28,
     fontWeight: '800',
-    color: colors.primaryText,
     textAlign: 'center',
     letterSpacing: -0.6,
     lineHeight: 34,
@@ -323,13 +296,11 @@ const styles = StyleSheet.create({
   },
   subheadline: {
     fontSize: 15,
-    color: colors.secondaryText,
     textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.primaryText,
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -342,68 +313,56 @@ const styles = StyleSheet.create({
   },
   featureTile: {
     width: '48%',
-    height: 110,
-    backgroundColor: '#FFFFFF',
+    height: 100,
     borderRadius: radii['2xl'],
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 12,
   },
   featureIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   featureTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.primaryText,
     textAlign: 'center',
   },
   plansContainer: {
-    gap: 16,
+    gap: 14,
     marginBottom: 28,
   },
   planCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: radii['3xl'],
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    padding: 20,
+    borderWidth: 2,
+    padding: 18,
     position: 'relative',
   },
-  planCardSelected: {
-    borderColor: colors.primary,
-    backgroundColor: '#FAFAFA',
-  },
   recommendedCard: {
-    borderColor: colors.primary,
+    position: 'relative',
   },
   recommendedBadge: {
     position: 'absolute',
     top: -12,
     alignSelf: 'center',
-    backgroundColor: colors.primary,
     borderRadius: radii.full,
     paddingHorizontal: 14,
     paddingVertical: 4,
   },
   recommendedBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.8,
   },
   planName: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    color: colors.primaryText,
     marginBottom: 4,
   },
   priceRow: {
@@ -412,43 +371,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   planPrice: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    color: colors.primaryText,
     letterSpacing: -0.5,
   },
   planPeriod: {
-    fontSize: 15,
-    color: colors.secondaryText,
+    fontSize: 14,
     fontWeight: '600',
   },
   savingsText: {
     fontSize: 13,
-    color: colors.secondaryText,
     marginTop: 2,
-    marginBottom: 14,
-  },
-  selectPlanBtn: {
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: radii.full,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  selectPlanBtnDark: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  selectBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.primaryText,
-  },
-  selectBtnTextDark: {
-    color: '#FFFFFF',
+    fontWeight: '600',
   },
   ctaArea: {
     alignItems: 'center',
@@ -460,11 +394,5 @@ const styles = StyleSheet.create({
   continueFreeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.secondaryText,
-  },
-  legalSubtext: {
-    fontSize: 12,
-    color: colors.mutedText,
-    marginTop: 4,
   },
 });

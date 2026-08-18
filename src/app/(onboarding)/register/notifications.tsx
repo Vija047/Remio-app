@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,13 +21,33 @@ export default function RegisterNotificationsScreen() {
   const router = useRouter();
   const haptics = useHaptics();
   const setNotificationsEnabled = useOnboardingStore((s) => s.setNotificationsEnabled);
-  const completeOnboarding = useOnboardingStore((s) => s.completeOnboarding);
+  const completeRegistration = useOnboardingStore((s) => s.completeRegistration);
 
-  const handleFinish = (enabled: boolean) => {
-    haptics.success();
-    setNotificationsEnabled(enabled);
-    completeOnboarding();
-    router.replace('/today');
+  const [loading, setLoading] = useState(false);
+
+  const handleFinish = async (enabled: boolean) => {
+    try {
+      setLoading(true);
+      setNotificationsEnabled(enabled);
+      await completeRegistration();
+      haptics.success();
+      router.replace('/today');
+    } catch (err: any) {
+      haptics.error();
+      Alert.alert(
+        'Registration Notice',
+        err.message || 'Could not complete registration. Please check your backend connection.',
+        [
+          {
+            text: 'Proceed to Dashboard',
+            onPress: () => router.replace('/today'),
+          },
+          { text: 'Try Again', style: 'cancel' },
+        ]
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -56,14 +78,14 @@ export default function RegisterNotificationsScreen() {
               <View style={styles.notifIconCircle}>
                 <Bell size={16} color="#FFFFFF" />
               </View>
-              <Text style={styles.notifAppName}>RoutineAI</Text>
+              <Text style={styles.notifAppName}>Routine AI</Text>
             </View>
             <Text style={styles.notifTime}>now</Text>
           </View>
 
           <Text style={styles.notifTitle}>Time for a Haircut? 💇</Text>
           <Text style={styles.notifBody}>
-            It has been 5 weeks since your last visit. We suggest scheduling one this weekend.
+            It has been 4 weeks since your last visit. We suggest scheduling one this weekend.
           </Text>
         </View>
 
@@ -71,7 +93,7 @@ export default function RegisterNotificationsScreen() {
         <View style={styles.textSection}>
           <Text style={styles.title}>Never miss an important{'\n'}task.</Text>
           <Text style={styles.subtitle}>
-            Get reminders before tasks are due — never scramble last minute.
+            Get proactive predictions before tasks become overdue.
           </Text>
         </View>
       </View>
@@ -79,15 +101,17 @@ export default function RegisterNotificationsScreen() {
       {/* Bottom CTA Buttons */}
       <View style={styles.footer}>
         <Button
-          title="Enable Notifications"
+          title={loading ? 'Setting up routines...' : 'Enable Notifications'}
           onPress={() => handleFinish(true)}
           size="lg"
           variant="primary"
+          disabled={loading}
         />
 
         <Pressable
-          onPress={() => handleFinish(false)}
+          onPress={() => !loading && handleFinish(false)}
           style={({ pressed }) => [styles.maybeLaterBtn, pressed && styles.btnPressed]}
+          disabled={loading}
         >
           <Text style={styles.maybeLaterText}>Maybe Later</Text>
         </Pressable>

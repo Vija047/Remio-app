@@ -16,7 +16,7 @@ export const colors = {
   border: '#E5E7EB',
   divider: '#F3F4F6',
 
-  // RoutineAI Coral Brand Accent
+  // Remio Coral Brand Accent
   coral: '#FF5A36',
   coralDark: '#E04826',
   coralLight: '#FFF0ED',

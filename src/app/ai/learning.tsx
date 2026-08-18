@@ -16,16 +16,17 @@ import {
   Calendar,
   MapPin,
 } from 'lucide-react-native';
-import { colors } from '../../theme/colors';
 import { radii } from '../../theme/radii';
 import { Switch } from '../../components/ui/Switch';
 import { Slider } from '../../components/ui/Slider';
 import { Button } from '../../components/ui/Button';
 import { useAIStore } from '../../store/useAIStore';
+import { useTheme } from '../../hooks/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
 
 export default function LearningModeScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const haptics = useHaptics();
   const learningSettings = useAIStore((s) => s.learningSettings);
   const updateLearningSettings = useAIStore((s) => s.updateLearningSettings);
@@ -33,12 +34,12 @@ export default function LearningModeScreen() {
   const handleResetProgress = () => {
     haptics.error();
     Alert.alert(
-      'Reset Learning Progress',
-      'This will reset your trained weights for task interval prediction.',
+      'Reset Learning Weights',
+      'This will reset your trained weights for task interval prediction to default heuristics.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset',
+          text: 'Reset to Defaults',
           style: 'destructive',
           onPress: () => {
             updateLearningSettings({ patternDepth: 0.5 });
@@ -50,16 +51,16 @@ export default function LearningModeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && styles.btnPressed]}
         >
-          <ArrowLeft size={24} color={colors.primary} />
+          <ArrowLeft size={24} color={theme.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -69,46 +70,72 @@ export default function LearningModeScreen() {
       >
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={styles.title}>Learning Mode</Text>
-          <Text style={styles.subtitle}>
-            Configure how the AI analyzes your behavior to predict your routine.
+          <Text style={[styles.title, { color: theme.text }]}>Learning Parameters</Text>
+          <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
+            Configure how Routine AI analyzes completions to predict recurring dates.
           </Text>
         </View>
 
         {/* Continuous Learning Info Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.sparkleCircle}>
-            <Sparkles size={20} color={colors.primary} />
+        <View
+          style={[
+            styles.infoCard,
+            {
+              backgroundColor: theme.cardMuted,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
+          <View style={[styles.sparkleCircle, { backgroundColor: theme.coralLight }]}>
+            <Sparkles size={20} color={theme.coral} />
           </View>
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Continuous Learning</Text>
-            <Text style={styles.infoDesc}>
-              Learning Mode improves over time as you log more tasks. The more consistent you are, the better the predictions.
+            <Text style={[styles.infoTitle, { color: theme.text }]}>
+              Adaptive Interval Regression
+            </Text>
+            <Text style={[styles.infoDesc, { color: theme.secondaryText }]}>
+              Routine AI learns from every completion timestamp. As you record more activity, interval variance shrinks and prediction windows tighten.
             </Text>
           </View>
         </View>
 
         {/* Learning Config Card */}
-        <View style={styles.configCard}>
+        <View
+          style={[
+            styles.configCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
           {/* Active Learning Toggle */}
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextCol}>
-              <Text style={styles.configTitle}>Active Learning</Text>
-              <Text style={styles.configSubtext}>
-                Allow AI to analyze completion patterns
+              <Text style={[styles.configTitle, { color: theme.text }]}>
+                Continuous Model Retraining
+              </Text>
+              <Text style={[styles.configSubtext, { color: theme.secondaryText }]}>
+                Recalculate predictions immediately upon each completion
               </Text>
             </View>
             <Switch
               value={learningSettings.activeLearning}
-              onValueChange={(val) => updateLearningSettings({ activeLearning: val })}
+              onValueChange={(val) => {
+                haptics.light();
+                updateLearningSettings({ activeLearning: val });
+              }}
+              showCheckmark
             />
           </View>
 
-          <View style={styles.cardDivider} />
+          <View style={[styles.cardDivider, { backgroundColor: theme.divider }]} />
 
           {/* Pattern Recognition Depth Slider */}
           <View style={styles.sliderSection}>
-            <Text style={styles.configTitle}>Pattern Recognition Depth</Text>
+            <Text style={[styles.configTitle, { color: theme.text }]}>
+              Pattern Recognition Depth
+            </Text>
             <View style={styles.sliderWrapper}>
               <Slider
                 value={learningSettings.patternDepth}
@@ -116,61 +143,70 @@ export default function LearningModeScreen() {
               />
             </View>
             <View style={styles.sliderLabelsRow}>
-              <Text style={styles.sliderLabel}>Shallow</Text>
-              <Text style={styles.sliderLabel}>Deep</Text>
+              <Text style={[styles.sliderLabel, { color: theme.mutedText }]}>Fast Adapting</Text>
+              <Text style={[styles.sliderLabel, { color: theme.mutedText }]}>Deep Long-Term</Text>
             </View>
           </View>
         </View>
 
         {/* Data Sources Section */}
-        <Text style={styles.sectionHeader}>Data Sources</Text>
-        <View style={styles.dataSourcesCard}>
+        <Text style={[styles.sectionHeader, { color: theme.secondaryText }]}>
+          Data Inputs
+        </Text>
+        <View
+          style={[
+            styles.dataSourcesCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
           {/* Manual Completions */}
           <View style={styles.sourceItem}>
             <View style={styles.sourceLeft}>
-              <ListFilter size={20} color={colors.primaryText} />
+              <ListFilter size={20} color={theme.text} />
               <View>
-                <Text style={styles.sourceTitle}>Manual Completions</Text>
-                <Text style={styles.sourceSubtext}>Always on</Text>
+                <Text style={[styles.sourceTitle, { color: theme.text }]}>
+                  Manual Completions
+                </Text>
+                <Text style={[styles.sourceSubtext, { color: theme.secondaryText }]}>
+                  Direct in-app task checks (Active)
+                </Text>
               </View>
             </View>
             <Switch
               value={learningSettings.manualCompletions}
-              onValueChange={(val) => updateLearningSettings({ manualCompletions: val })}
+              onValueChange={(val) => {
+                haptics.light();
+                updateLearningSettings({ manualCompletions: val });
+              }}
+              showCheckmark
             />
           </View>
 
-          <View style={styles.itemDivider} />
+          <View style={[styles.itemDivider, { backgroundColor: theme.divider }]} />
 
           {/* Calendar Sync */}
           <View style={styles.sourceItem}>
             <View style={styles.sourceLeft}>
-              <Calendar size={20} color={colors.primaryText} />
+              <Calendar size={20} color={theme.text} />
               <View>
-                <Text style={styles.sourceTitle}>Calendar Sync</Text>
-                <Text style={styles.sourceSubtext}>Contextual scheduling</Text>
+                <Text style={[styles.sourceTitle, { color: theme.text }]}>
+                  Schedule Optimization
+                </Text>
+                <Text style={[styles.sourceSubtext, { color: theme.secondaryText }]}>
+                  Avoid scheduling during high load days
+                </Text>
               </View>
             </View>
             <Switch
               value={learningSettings.calendarSync}
-              onValueChange={(val) => updateLearningSettings({ calendarSync: val })}
-            />
-          </View>
-
-          <View style={styles.itemDivider} />
-
-          {/* Location Habits */}
-          <View style={styles.sourceItem}>
-            <View style={styles.sourceLeft}>
-              <MapPin size={20} color={colors.primaryText} />
-              <View>
-                <Text style={styles.sourceTitle}>Location Habits</Text>
-                <Text style={styles.sourceSubtext}>Geofenced triggers</Text>
-              </View>
-            </View>
-            <Switch
-              value={learningSettings.locationHabits}
-              onValueChange={(val) => updateLearningSettings({ locationHabits: val })}
+              onValueChange={(val) => {
+                haptics.light();
+                updateLearningSettings({ calendarSync: val });
+              }}
+              showCheckmark
             />
           </View>
         </View>
@@ -178,7 +214,7 @@ export default function LearningModeScreen() {
         {/* Reset Learning Progress Button */}
         <View style={styles.resetButtonWrapper}>
           <Button
-            title="Reset Learning Progress"
+            title="Reset Learning Weights"
             onPress={handleResetProgress}
             variant="secondary"
             size="lg"
@@ -192,7 +228,6 @@ export default function LearningModeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     height: 56,
@@ -210,7 +245,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.primaryText,
   },
   placeholder: {
     width: 36,
@@ -224,32 +258,27 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800',
-    color: colors.primaryText,
-    letterSpacing: -0.8,
+    letterSpacing: -0.6,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 15,
-    color: colors.secondaryText,
     lineHeight: 22,
   },
   infoCard: {
-    backgroundColor: '#F8F9FA',
     borderRadius: radii['4xl'],
     padding: 22,
     flexDirection: 'row',
     gap: 16,
     borderWidth: 1,
-    borderColor: '#F0F0F2',
     marginBottom: 20,
   },
   sparkleCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#EAECEF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -259,20 +288,16 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: colors.primaryText,
     marginBottom: 6,
   },
   infoDesc: {
     fontSize: 14,
-    color: colors.secondaryText,
     lineHeight: 20,
   },
   configCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: radii['3xl'],
     padding: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     marginBottom: 24,
   },
   toggleRow: {
@@ -287,16 +312,13 @@ const styles = StyleSheet.create({
   configTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.primaryText,
     marginBottom: 4,
   },
   configSubtext: {
-    fontSize: 14,
-    color: colors.secondaryText,
+    fontSize: 13,
   },
   cardDivider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
     marginVertical: 18,
   },
   sliderSection: {},
@@ -309,21 +331,17 @@ const styles = StyleSheet.create({
   },
   sliderLabel: {
     fontSize: 13,
-    color: colors.secondaryText,
     fontWeight: '500',
   },
   sectionHeader: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: colors.primaryText,
     marginBottom: 12,
     marginLeft: 4,
   },
   dataSourcesCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: radii['3xl'],
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     paddingVertical: 6,
     marginBottom: 28,
   },
@@ -338,20 +356,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
+    flex: 1,
+    marginRight: 12,
   },
   sourceTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.primaryText,
   },
   sourceSubtext: {
     fontSize: 13,
-    color: colors.secondaryText,
     marginTop: 2,
   },
   itemDivider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
     marginLeft: 52,
   },
   resetButtonWrapper: {

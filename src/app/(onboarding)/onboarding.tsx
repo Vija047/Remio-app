@@ -39,13 +39,13 @@ const ONBOARDING_SLIDES: OnboardingSlide[] = [
   },
   {
     title: 'AI learns your routine.',
-    subtitle: 'RoutineAI learns from your habits and recurring tasks.',
+    subtitle: 'Remio learns from your habits and recurring tasks.',
     image: require('../../../assets/onboarding-images/onboarding-02.svg'),
     ctaText: 'Continue →',
   },
   {
     title: "Know what's coming next.",
-    subtitle: 'RoutineAI predicts when recurring tasks are likely to come back.',
+    subtitle: 'Remio predicts when recurring tasks are likely to come back.',
     image: require('../../../assets/onboarding-images/onboarding-03.svg'),
     ctaText: 'Continue →',
   },

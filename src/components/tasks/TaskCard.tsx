@@ -1,14 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Sparkles, LayoutGrid, ArrowRight } from 'lucide-react-native';
+import { Sparkles, LayoutGrid } from 'lucide-react-native';
 import { Task } from '../../types';
-import { colors } from '../../theme/colors';
 import { radii } from '../../theme/radii';
 import { Badge } from '../ui/Badge';
 import { Checkbox } from '../ui/Checkbox';
 import { ProgressBar } from '../ui/ProgressBar';
 import { useTaskStore } from '../../store/useTaskStore';
+import { useTheme } from '../../hooks/useTheme';
+import { useHaptics } from '../../hooks/useHaptics';
 
 export interface TaskCardProps {
   task: Task;
@@ -16,13 +17,21 @@ export interface TaskCardProps {
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
   const router = useRouter();
+  const theme = useTheme();
+  const haptics = useHaptics();
   const toggleTaskCompleted = useTaskStore((s) => s.toggleTaskCompleted);
 
   const handleCardPress = () => {
+    haptics.light();
     router.push({
       pathname: '/task/[id]',
       params: { id: task.id },
     });
+  };
+
+  const handleToggle = () => {
+    haptics.success();
+    toggleTaskCompleted(task.id);
   };
 
   return (
@@ -30,6 +39,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       onPress={handleCardPress}
       style={({ pressed }) => [
         styles.container,
+        {
+          backgroundColor: theme.cardMuted,
+          borderColor: theme.cardBorder,
+        },
         task.completed && styles.completedContainer,
         pressed && styles.pressed,
       ]}
@@ -37,7 +50,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       <View style={styles.topRow}>
         <Checkbox
           checked={task.completed}
-          onToggle={() => toggleTaskCompleted(task.id)}
+          onToggle={handleToggle}
           size={26}
           style={styles.checkbox}
         />
@@ -45,51 +58,70 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
         <View style={styles.titleArea}>
           <View style={styles.titleRow}>
             <Text
-              style={[styles.title, task.completed && styles.strikethrough]}
+              style={[
+                styles.title,
+                { color: theme.text },
+                task.completed && styles.strikethrough,
+              ]}
               numberOfLines={1}
             >
               {`${task.emoji} ${task.title}`}
             </Text>
             {task.isAiSuggested && (
               <Badge
-                label="AI Suggested"
+                label="AI Predicted"
                 variant="ai"
                 icon={<Sparkles size={11} color="#374151" />}
               />
             )}
           </View>
-          <Text style={styles.dueLabel}>{task.dueLabel}</Text>
+          <Text style={[styles.dueLabel, { color: theme.secondaryText }]}>
+            {task.dueLabel}
+          </Text>
         </View>
       </View>
 
       {/* Task card metadata & extra pills */}
       <View style={styles.bottomContent}>
-        {task.smartWindowStatus === 'Open' && (
-          <View style={styles.smartWindowPill}>
-            <LayoutGrid size={14} color={colors.primaryText} />
-            <Text style={styles.smartWindowText}>Smart Window: Open</Text>
-          </View>
-        )}
-
-        {task.title === 'Medicine Refill' && (
-          <View style={styles.confidenceRow}>
-            <View style={styles.progressBarWrapper}>
-              <ProgressBar progress={task.confidence} height={5} color={colors.primary} />
+        <View style={styles.metaRow}>
+          {task.smartWindowStatus && (
+            <View
+              style={[
+                styles.smartWindowPill,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <LayoutGrid size={13} color={theme.text} />
+              <Text style={[styles.smartWindowText, { color: theme.text }]}>
+                Window: {task.smartWindowStatus}
+              </Text>
             </View>
-            <Text style={styles.confidenceText}>
-              Confidence: {task.confidence}%
-            </Text>
-          </View>
-        )}
+          )}
 
-        {task.actionCta && (
-          <Pressable
-            onPress={handleCardPress}
-            style={({ pressed }) => [styles.actionButton, pressed && styles.btnPressed]}
-          >
-            <Text style={styles.actionBtnText}>{task.actionCta}</Text>
-          </Pressable>
-        )}
+          {task.confidence > 0 && (
+            <View style={styles.confidenceRow}>
+              <View style={styles.progressBarWrapper}>
+                <ProgressBar
+                  progress={task.confidence}
+                  height={5}
+                  color={theme.teal}
+                  backgroundColor={theme.border}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.confidenceText,
+                  { color: theme.secondaryText },
+                ]}
+              >
+                {task.confidence}% Conf.
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
     </Pressable>
   );
@@ -97,16 +129,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#F8F9FA',
     borderRadius: radii['3xl'],
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#F0F0F2',
   },
   completedContainer: {
     opacity: 0.65,
-    backgroundColor: '#FAFAFA',
   },
   pressed: {
     opacity: 0.9,
@@ -132,17 +161,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 17,
     fontWeight: '700',
-    color: colors.primaryText,
     letterSpacing: -0.3,
     flexShrink: 1,
   },
   strikethrough: {
     textDecorationLine: 'line-through',
-    color: colors.mutedText,
+    opacity: 0.6,
   },
   dueLabel: {
     fontSize: 14,
-    color: colors.secondaryText,
     marginTop: 2,
     fontWeight: '400',
   },
@@ -150,52 +177,38 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingLeft: 40,
   },
-  smartWindowPill: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: radii.full,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  smartWindowText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primaryText,
-  },
-  confidenceRow: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 10,
+  },
+  smartWindowPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.full,
+    gap: 5,
+    borderWidth: 1,
+  },
+  smartWindowText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  confidenceRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
   },
   progressBarWrapper: {
     flex: 1,
+    maxWidth: 70,
   },
   confidenceText: {
-    fontSize: 12,
-    color: colors.secondaryText,
-    fontWeight: '600',
-  },
-  actionButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radii.full,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  btnPressed: {
-    opacity: 0.85,
-  },
-  actionBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '600',
   },
 });

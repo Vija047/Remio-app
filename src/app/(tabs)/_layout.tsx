@@ -1,19 +1,27 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { Calendar, Repeat, BarChart3, Settings } from 'lucide-react-native';
-import { colors } from '../../theme/colors';
 import { radii } from '../../theme/radii';
+import { useTheme } from '../../hooks/useTheme';
 
 export default function TabsLayout() {
+  const theme = useTheme();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            backgroundColor: theme.background,
+            borderTopColor: theme.divider,
+          },
+        ],
         tabBarShowLabel: true,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: '#8E8E93',
+        tabBarActiveTintColor: theme.coral,
+        tabBarInactiveTintColor: theme.mutedText,
         tabBarLabelStyle: styles.tabBarLabel,
       }}
     >
@@ -22,7 +30,14 @@ export default function TabsLayout() {
         options={{
           title: 'Today',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
+            <View
+              style={[
+                styles.iconContainer,
+                focused && {
+                  backgroundColor: theme.isDark ? '#232733' : '#F3F4F6',
+                },
+              ]}
+            >
               <Calendar size={22} color={color} strokeWidth={focused ? 2.5 : 2} />
             </View>
           ),
@@ -33,7 +48,14 @@ export default function TabsLayout() {
         options={{
           title: 'Routine',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
+            <View
+              style={[
+                styles.iconContainer,
+                focused && {
+                  backgroundColor: theme.isDark ? '#232733' : '#F3F4F6',
+                },
+              ]}
+            >
               <Repeat size={22} color={color} strokeWidth={focused ? 2.5 : 2} />
             </View>
           ),
@@ -44,7 +66,14 @@ export default function TabsLayout() {
         options={{
           title: 'Insights',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
+            <View
+              style={[
+                styles.iconContainer,
+                focused && {
+                  backgroundColor: theme.isDark ? '#232733' : '#F3F4F6',
+                },
+              ]}
+            >
               <BarChart3 size={22} color={color} strokeWidth={focused ? 2.5 : 2} />
             </View>
           ),
@@ -55,7 +84,14 @@ export default function TabsLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
+            <View
+              style={[
+                styles.iconContainer,
+                focused && {
+                  backgroundColor: theme.isDark ? '#232733' : '#F3F4F6',
+                },
+              ]}
+            >
               <Settings size={22} color={color} strokeWidth={focused ? 2.5 : 2} />
             </View>
           ),
@@ -67,9 +103,7 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F2',
     height: Platform.OS === 'ios' ? 88 : 68,
     paddingTop: 8,
     paddingBottom: Platform.OS === 'ios' ? 28 : 10,
@@ -90,8 +124,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: radii.full,
-  },
-  iconContainerFocused: {
-    backgroundColor: '#F3F4F6',
   },
 });

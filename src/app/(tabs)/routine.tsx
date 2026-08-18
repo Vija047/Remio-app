@@ -1,18 +1,20 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BarChart3 } from 'lucide-react-native';
-import { colors } from '../../theme/colors';
+import { BarChart3, History, Sparkles } from 'lucide-react-native';
 import { radii } from '../../theme/radii';
 import { Input } from '../../components/ui/Input';
 import { HistoryItem } from '../../components/tasks/HistoryItem';
 import { useTaskStore } from '../../store/useTaskStore';
+import { useTheme } from '../../hooks/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
 
 const FILTER_TABS: Array<'All' | 'Completed' | 'Overdue' | 'Upcoming'> = [
@@ -22,12 +24,27 @@ const FILTER_TABS: Array<'All' | 'Completed' | 'Overdue' | 'Upcoming'> = [
 ];
 
 export default function RoutineHistoryScreen() {
+  const theme = useTheme();
   const haptics = useHaptics();
   const historyLogs = useTaskStore((s) => s.historyLogs);
   const searchQuery = useTaskStore((s) => s.searchQuery);
   const activeFilter = useTaskStore((s) => s.activeFilter);
   const setSearchQuery = useTaskStore((s) => s.setSearchQuery);
   const setActiveFilter = useTaskStore((s) => s.setActiveFilter);
+  const fetchHistory = useTaskStore((s) => s.fetchHistory);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    fetchHistory().catch(() => {});
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    haptics.light();
+    await fetchHistory().catch(() => {});
+    setRefreshing(false);
+  };
 
   const filteredLogs = historyLogs.filter((item) => {
     const matchesSearch =
@@ -39,24 +56,35 @@ export default function RoutineHistoryScreen() {
   const todayLogs = filteredLogs.filter((l) => l.section === 'Today');
   const yesterdayLogs = filteredLogs.filter((l) => l.section === 'Yesterday');
   const lastWeekLogs = filteredLogs.filter((l) => l.section === 'Last Week');
+  const earlierLogs = filteredLogs.filter((l) => l.section === 'Earlier');
+
+  const totalCompletions = historyLogs.length;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.primary}
+            colors={[theme.coral]}
+          />
+        }
       >
         {/* Screen Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>History</Text>
-          <Text style={styles.subtitle}>
-            See your recurring task activity over time.
+          <Text style={[styles.title, { color: theme.text }]}>Routine History</Text>
+          <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
+            Activity logs and completion patterns over time.
           </Text>
         </View>
 
         {/* Search Input */}
         <Input
-          placeholder="Search tasks..."
+          placeholder="Search task completions..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           isSearch
@@ -76,13 +104,21 @@ export default function RoutineHistoryScreen() {
                 }}
                 style={[
                   styles.filterChip,
-                  isActive ? styles.filterChipActive : styles.filterChipInactive,
+                  {
+                    backgroundColor: isActive ? theme.primary : theme.pillBackground,
+                  },
                 ]}
               >
                 <Text
                   style={[
                     styles.filterText,
-                    isActive ? styles.filterTextActive : styles.filterTextInactive,
+                    {
+                      color: isActive
+                        ? theme.isDark
+                          ? '#0B0C10'
+                          : '#FFFFFF'
+                        : theme.text,
+                    },
                   ]}
                 >
                   {tab}
@@ -92,10 +128,31 @@ export default function RoutineHistoryScreen() {
           })}
         </View>
 
+        {/* Empty state when no history */}
+        {filteredLogs.length === 0 && (
+          <View
+            style={[
+              styles.emptyHistoryCard,
+              {
+                backgroundColor: theme.cardMuted,
+                borderColor: theme.cardBorder,
+              },
+            ]}
+          >
+            <History size={32} color={theme.mutedText} />
+            <Text style={[styles.emptyHistoryTitle, { color: theme.text }]}>
+              No Activity Logged Yet
+            </Text>
+            <Text style={[styles.emptyHistorySubtitle, { color: theme.secondaryText }]}>
+              Complete your routine tasks to build your habit history and train the AI model.
+            </Text>
+          </View>
+        )}
+
         {/* Grouped Logs: Today */}
         {todayLogs.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Today</Text>
+            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>Today</Text>
             {todayLogs.map((item) => (
               <HistoryItem key={item.id} item={item} />
             ))}
@@ -105,7 +162,7 @@ export default function RoutineHistoryScreen() {
         {/* Grouped Logs: Yesterday */}
         {yesterdayLogs.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Yesterday</Text>
+            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>Yesterday</Text>
             {yesterdayLogs.map((item) => (
               <HistoryItem key={item.id} item={item} />
             ))}
@@ -115,38 +172,80 @@ export default function RoutineHistoryScreen() {
         {/* Grouped Logs: Last Week */}
         {lastWeekLogs.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Last Week</Text>
+            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>Last Week</Text>
             {lastWeekLogs.map((item) => (
               <HistoryItem key={item.id} item={item} />
             ))}
           </View>
         )}
 
+        {/* Grouped Logs: Earlier */}
+        {earlierLogs.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>Earlier</Text>
+            {earlierLogs.map((item) => (
+              <HistoryItem key={item.id} item={item} />
+            ))}
+          </View>
+        )}
+
         {/* Monthly Summary Card */}
-        <View style={styles.monthlySummaryCard}>
+        <View
+          style={[
+            styles.monthlySummaryCard,
+            {
+              backgroundColor: theme.cardMuted,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
           <View style={styles.summaryHeader}>
-            <BarChart3 size={20} color={colors.primaryText} />
-            <Text style={styles.summaryTitle}>Monthly Summary</Text>
+            <BarChart3 size={20} color={theme.text} />
+            <Text style={[styles.summaryTitle, { color: theme.text }]}>Activity Summary</Text>
           </View>
 
           <View style={styles.summaryGrid}>
-            <View style={styles.summaryTile}>
-              <Text style={styles.microLabel}>TASKS COMPLETED</Text>
-              <Text style={styles.summaryValue}>28</Text>
+            <View
+              style={[
+                styles.summaryTile,
+                { backgroundColor: theme.card, borderColor: theme.cardBorder },
+              ]}
+            >
+              <Text style={[styles.microLabel, { color: theme.mutedText }]}>
+                TOTAL LOGS
+              </Text>
+              <Text style={[styles.summaryValue, { color: theme.text }]}>
+                {totalCompletions}
+              </Text>
             </View>
 
-            <View style={styles.summaryTile}>
-              <Text style={styles.microLabel}>AVERAGE DELAY</Text>
+            <View
+              style={[
+                styles.summaryTile,
+                { backgroundColor: theme.card, borderColor: theme.cardBorder },
+              ]}
+            >
+              <Text style={[styles.microLabel, { color: theme.mutedText }]}>
+                ON-TIME RATE
+              </Text>
               <View style={styles.delayValueRow}>
-                <Text style={styles.summaryValue}>1.2</Text>
-                <Text style={styles.unitText}>Days</Text>
+                <Text style={[styles.summaryValue, { color: theme.teal }]}>94%</Text>
               </View>
             </View>
           </View>
 
-          <View style={styles.accuracyTile}>
-            <Text style={styles.microLabel}>AI ACCURACY</Text>
-            <Text style={styles.accuracyValue}>94%</Text>
+          <View
+            style={[
+              styles.accuracyTile,
+              { backgroundColor: theme.card, borderColor: theme.cardBorder },
+            ]}
+          >
+            <Text style={[styles.microLabel, { color: theme.mutedText }]}>
+              AI MODEL STATUS
+            </Text>
+            <Text style={[styles.accuracyValue, { color: theme.coral }]}>
+              Adaptive Learning Active
+            </Text>
           </View>
         </View>
       </ScrollView>
@@ -157,7 +256,6 @@ export default function RoutineHistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -170,13 +268,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: colors.primaryText,
     letterSpacing: -0.8,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 15,
-    color: colors.secondaryText,
   },
   searchWrapper: {
     marginBottom: 16,
@@ -191,21 +287,28 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: radii.full,
   },
-  filterChipActive: {
-    backgroundColor: colors.primary,
-  },
-  filterChipInactive: {
-    backgroundColor: '#F3F4F6',
-  },
   filterText: {
     fontSize: 14,
     fontWeight: '700',
   },
-  filterTextActive: {
-    color: '#FFFFFF',
+  emptyHistoryCard: {
+    borderRadius: radii['3xl'],
+    padding: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderWidth: 1,
+    marginBottom: 24,
   },
-  filterTextInactive: {
-    color: colors.primaryText,
+  emptyHistoryTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  emptyHistorySubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 8,
   },
   section: {
     marginBottom: 20,
@@ -213,16 +316,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.secondaryText,
     marginBottom: 12,
   },
   monthlySummaryCard: {
-    backgroundColor: '#F8F9FA',
     borderRadius: radii['4xl'],
     padding: 22,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#F0F0F2',
   },
   summaryHeader: {
     flexDirection: 'row',
@@ -233,7 +333,6 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: colors.primaryText,
     letterSpacing: -0.3,
   },
   summaryGrid: {
@@ -243,23 +342,19 @@ const styles = StyleSheet.create({
   },
   summaryTile: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
     borderRadius: radii['2xl'],
     padding: 16,
     borderWidth: 1,
-    borderColor: '#EEF0F3',
   },
   microLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#8E8E93',
     letterSpacing: 0.6,
     marginBottom: 6,
   },
   summaryValue: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800',
-    color: colors.primaryText,
     letterSpacing: -0.5,
   },
   delayValueRow: {
@@ -267,22 +362,14 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     gap: 4,
   },
-  unitText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.secondaryText,
-  },
   accuracyTile: {
-    backgroundColor: '#FFFFFF',
     borderRadius: radii['2xl'],
     padding: 16,
     borderWidth: 1,
-    borderColor: '#EEF0F3',
   },
   accuracyValue: {
-    fontSize: 30,
+    fontSize: 18,
     fontWeight: '800',
-    color: colors.primaryText,
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
 });
