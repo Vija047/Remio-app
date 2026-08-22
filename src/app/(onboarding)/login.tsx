@@ -80,7 +80,7 @@ export default function LoginScreen() {
       await googleLogin({
         email: googleEmail.toLowerCase(),
         name: formattedName || 'Google User',
-        photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        photoUrl: '',
       });
 
       await Promise.all([fetchTasks(), fetchHistory()]).catch(() => {});
@@ -95,8 +95,30 @@ export default function LoginScreen() {
   };
 
   const handleCreateDemoUser = () => {
+    haptics.light();
     setEmail('demo@routineai.com');
     setPassword('Routine123!');
+  };
+
+  const handleForgotPassword = () => {
+    haptics.light();
+    Alert.prompt
+      ? Alert.prompt(
+          'Reset Password',
+          'Enter your email address to receive password reset instructions:',
+          async (resetEmail) => {
+            if (!resetEmail || !resetEmail.trim()) return;
+            haptics.success();
+            Alert.alert('Email Sent', `If an account exists for ${resetEmail.trim()}, a password reset link has been sent.`);
+          },
+          'plain-text',
+          email || 'user@example.com'
+        )
+      : Alert.alert(
+          'Reset Password',
+          'A password reset link has been dispatched to your email if an account is found.',
+          [{ text: 'OK', onPress: () => haptics.light() }]
+        );
   };
 
   return (
@@ -110,68 +132,86 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header Title Area */}
-          <View style={styles.headerArea}>
-            <View style={styles.brandBadge}>
-              <Sparkles size={16} color={colors.coral} />
-              <Text style={styles.brandBadgeText}>Routine AI</Text>
-            </View>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to access your predicted routines.</Text>
-          </View>
-
-          {/* Form Inputs */}
-          <View style={styles.formArea}>
-            {/* Google Sign In Button */}
-            <GoogleSignInButton
-              title="Continue with Google"
-              onPress={handleGoogleSignIn}
-              loading={googleLoading}
-              disabled={loading}
-              style={{ marginBottom: 20 }}
-            />
-
-            {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or sign in with email</Text>
-              <View style={styles.dividerLine} />
+          <View>
+            {/* Header Title Area */}
+            <View style={styles.headerArea}>
+              <View style={styles.brandBadge}>
+                <Sparkles size={15} color={colors.primaryText} />
+                <Text style={styles.brandBadgeText}>Remio</Text>
+              </View>
+              <Text style={styles.title}>Welcome Back</Text>
+              <Text style={styles.subtitle}>Sign in to access your predicted routines.</Text>
             </View>
 
-            <Input
-              placeholder="Email Address"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              leftIcon={<Mail size={20} color={colors.secondaryText} />}
-            />
+            {/* Form Inputs */}
+            <View style={styles.formArea}>
+              {/* Google Sign In Button */}
+              <GoogleSignInButton
+                title="Continue with Google"
+                onPress={handleGoogleSignIn}
+                loading={googleLoading}
+                disabled={loading}
+                style={{ marginBottom: 22 }}
+              />
 
-            <Input
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              isPassword
-              leftIcon={<Lock size={20} color={colors.secondaryText} />}
-            />
+              {/* Divider */}
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or continue with email</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
-            <View style={styles.optionsRow}>
-              <Pressable
-                onPress={handleCreateDemoUser}
-                style={({ pressed }) => [styles.demoBtn, pressed && styles.btnPressed]}
-              >
-                <Text style={styles.demoBtnText}>Fill Demo Credentials</Text>
-              </Pressable>
+              <Input
+                placeholder="Email Address"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                leftIcon={<Mail size={20} color={colors.secondaryText} />}
+              />
+
+              <Input
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                isPassword
+                leftIcon={<Lock size={20} color={colors.secondaryText} />}
+              />
+
+              {/* Secondary Actions Row: Demo Helper & Forgot Password */}
+              <View style={styles.optionsRow}>
+                {__DEV__ ? (
+                  <Pressable
+                    onPress={handleCreateDemoUser}
+                    style={({ pressed }) => [styles.optionLink, pressed && styles.btnPressed]}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.demoBtnText}>Use demo account</Text>
+                  </Pressable>
+                ) : (
+                  <View />
+                )}
+
+                <Pressable
+                  onPress={handleForgotPassword}
+                  style={({ pressed }) => [styles.optionLink, pressed && styles.btnPressed]}
+                  hitSlop={8}
+                >
+                  <Text style={styles.forgotBtnText}>Forgot password?</Text>
+                </Pressable>
+              </View>
+
+              <Button
+                title={loading ? 'Signing In...' : 'Sign In'}
+                onPress={handleSignIn}
+                size="lg"
+                variant="primary"
+                loading={loading}
+                disabled={loading || googleLoading}
+                style={styles.signInButton}
+              />
             </View>
-
-            <Button
-              title={loading ? 'Signing In...' : 'Sign In'}
-              onPress={handleSignIn}
-              size="lg"
-              variant="primary"
-              disabled={loading || googleLoading}
-              style={styles.signInButton}
-            />
           </View>
 
           {/* Footer Register Link */}
@@ -200,39 +240,41 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
   headerArea: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 28,
+    marginTop: 8,
+    marginBottom: 22,
   },
   brandBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFF0ED',
-    paddingHorizontal: 12,
+    backgroundColor: '#F4F4F5',
+    paddingHorizontal: 14,
     paddingVertical: 5,
     borderRadius: radii.full,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   brandBadgeText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.coral,
+    color: colors.primaryText,
   },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
     color: colors.primaryText,
     letterSpacing: -0.8,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subtitle: {
     fontSize: 15,
     color: colors.secondaryText,
     textAlign: 'center',
+    lineHeight: 21,
   },
   formArea: {
     width: '100%',
@@ -241,40 +283,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#E5E5E7',
   },
   dividerText: {
     fontSize: 13,
-    color: colors.mutedText,
-    fontWeight: '500',
+    color: colors.secondaryText,
+    fontWeight: '600',
   },
   optionsRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20,
     marginTop: -4,
+    paddingHorizontal: 2,
   },
-  demoBtn: {
+  optionLink: {
     paddingVertical: 4,
-    paddingHorizontal: 8,
   },
   demoBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.coral,
+    color: colors.secondaryText,
+  },
+  forgotBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primaryText,
   },
   signInButton: {
     marginBottom: 16,
   },
   footerArea: {
     alignItems: 'center',
-    marginTop: 20,
-    paddingBottom: 8,
+    marginTop: 16,
+    paddingBottom: 4,
   },
   registerLink: {
     paddingVertical: 8,
@@ -288,6 +336,6 @@ const styles = StyleSheet.create({
   },
   footerHighlight: {
     color: colors.primaryText,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });

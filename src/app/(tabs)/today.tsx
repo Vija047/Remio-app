@@ -49,7 +49,9 @@ export default function TodayScreen() {
   };
 
   const todayTasksCount = tasks.filter((t) => !t.completed).length;
-  const upcomingCount = tasks.filter((t) => t.dueLabel === 'Next Week' || t.dueLabel === 'Tomorrow' || t.dueLabel === 'In 2 Weeks').length;
+  const upcomingCount = tasks.filter(
+    (t) => t.dueLabel === 'Next Week' || t.dueLabel === 'Tomorrow' || t.dueLabel === 'In 2 Weeks'
+  ).length;
   const overdueCount = tasks.filter((t) => t.dueLabel === 'Overdue').length;
 
   const handleAddTask = () => {
@@ -79,7 +81,7 @@ export default function TodayScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.primary}
-            colors={[theme.coral]}
+            colors={[theme.primary]}
           />
         }
       >
@@ -95,7 +97,7 @@ export default function TodayScreen() {
           </View>
 
           <Pressable onPress={handleAvatarPress}>
-            <Avatar url={user.avatarUrl} size={50} />
+            <Avatar url={user.avatarUrl} name={user.name} size={48} />
           </Pressable>
         </View>
 
@@ -165,20 +167,12 @@ export default function TodayScreen() {
               styles.statCardRight,
               {
                 backgroundColor: theme.cardMuted,
-                borderColor: overdueCount > 0 ? theme.red : theme.cardBorder,
+                borderColor: theme.cardBorder,
               },
             ]}
           >
-            <AlertTriangle
-              size={22}
-              color={overdueCount > 0 ? theme.red : theme.text}
-            />
-            <Text
-              style={[
-                styles.statNumber,
-                { color: overdueCount > 0 ? theme.red : theme.text },
-              ]}
-            >
+            <AlertTriangle size={22} color={theme.text} />
+            <Text style={[styles.statNumber, { color: theme.text }]}>
               {overdueCount}
             </Text>
             <Text style={[styles.statLabel, { color: theme.secondaryText }]}>
@@ -193,9 +187,24 @@ export default function TodayScreen() {
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
               Active Routines
             </Text>
-            {isLoading && !refreshing && (
-              <ActivityIndicator size="small" color={theme.coral} />
-            )}
+            <View style={styles.agendaHeaderRight}>
+              {isLoading && !refreshing && (
+                <ActivityIndicator size="small" color={theme.primary} style={{ marginRight: 4 }} />
+              )}
+              <Pressable
+                onPress={handleAddTask}
+                style={({ pressed }) => [
+                  styles.headerAddBtn,
+                  { backgroundColor: theme.cardMuted, borderColor: theme.border, borderWidth: 1 },
+                  pressed && styles.btnPressed,
+                ]}
+              >
+                <Plus size={15} color={theme.text} strokeWidth={2.5} />
+                <Text style={[styles.headerAddBtnText, { color: theme.text }]}>
+                  Add Routine
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
           {tasks.length === 0 && !isLoading ? (
@@ -208,19 +217,19 @@ export default function TodayScreen() {
                 },
               ]}
             >
-              <View style={styles.emptyIconCircle}>
-                <Sparkles size={26} color={theme.coral} />
+              <View style={[styles.emptyIconCircle, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
+                <Sparkles size={24} color={theme.text} />
               </View>
               <Text style={[styles.emptyTitle, { color: theme.text }]}>
                 No Routines Yet
               </Text>
               <Text style={[styles.emptySubtitle, { color: theme.secondaryText }]}>
-                Add your recurring tasks like haircuts, plants, filters, or medicines to get smart AI predictions.
+                Add your recurring tasks like haircuts, plants, filters, or medicines to get smart routine predictions.
               </Text>
               <Button
                 title="+ Add Your First Routine"
                 onPress={handleAddTask}
-                variant="coral"
+                variant="primary"
                 size="md"
                 style={styles.emptyAddBtn}
               />
@@ -269,13 +278,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 90,
+    paddingBottom: 110,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   greetingText: {
     fontSize: 15,
@@ -386,6 +395,25 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.4,
   },
+  agendaHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radii.full,
+  },
+  headerAddBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  btnPressed: {
+    opacity: 0.7,
+  },
   tasksList: {
     gap: 4,
   },
@@ -421,7 +449,7 @@ const styles = StyleSheet.create({
   },
   fabButton: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 24,
     right: 20,
     borderRadius: radii.full,
     paddingHorizontal: 22,
@@ -431,9 +459,10 @@ const styles = StyleSheet.create({
     gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 10,
-    elevation: 8,
+    elevation: 10,
+    zIndex: 999,
   },
   fabPressed: {
     opacity: 0.88,

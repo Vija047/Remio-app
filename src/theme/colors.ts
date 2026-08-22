@@ -1,38 +1,38 @@
 export const colors = {
-  // Primary brand & text
-  primary: '#111118',
-  primaryText: '#111118',
-  secondaryText: '#6B7280',
-  mutedText: '#9CA3AF',
-  subtleText: '#D1D5DB',
+  // Primary brand & text (Black & White Monochrome)
+  primary: '#111111',
+  primaryText: '#111111',
+  secondaryText: '#6B6B73',
+  mutedText: '#A1A1AA',
+  subtleText: '#D4D4D8',
 
   // Backgrounds & Surfaces
   background: '#FFFFFF',
-  backgroundMuted: '#F8F9FA',
-  backgroundSoft: '#F4F5F7',
+  backgroundMuted: '#F7F7F8',
+  backgroundSoft: '#F4F4F6',
   card: '#FFFFFF',
-  cardBorder: '#F0F0F2',
-  cardMuted: '#F6F7F9',
-  border: '#E5E7EB',
-  divider: '#F3F4F6',
+  cardBorder: '#E5E5E7',
+  cardMuted: '#F7F7F8',
+  border: '#E5E5E7',
+  divider: '#E5E5E7',
 
-  // Remio Coral Brand Accent
-  coral: '#FF5A36',
-  coralDark: '#E04826',
-  coralLight: '#FFF0ED',
-  coralSoft: '#FFECE7',
-  coralBorder: '#FFD5CC',
+  // Remio Neutral & Core Accents
+  coral: '#111111',
+  coralDark: '#000000',
+  coralLight: '#F4F4F5',
+  coralSoft: '#F4F4F5',
+  coralBorder: '#E5E5E7',
 
-  // AI & Metric Accents
-  teal: '#00B8D9',
-  tealLight: '#E6F9FC',
-  tealDark: '#0097B2',
-  purple: '#7C3AED',
-  purpleLight: '#F5F3FF',
-  green: '#10B981',
-  greenLight: '#ECFDF5',
-  amber: '#F59E0B',
-  amberLight: '#FEF3C7',
+  // AI & Metric Accents (Monochrome & subtle slate)
+  teal: '#111111',
+  tealLight: '#F4F4F5',
+  tealDark: '#000000',
+  purple: '#111111',
+  purpleLight: '#F4F4F5',
+  green: '#111111',
+  greenLight: '#F4F4F5',
+  amber: '#111111',
+  amberLight: '#F4F4F5',
   red: '#EF4444',
   redLight: '#FEE2E2',
 

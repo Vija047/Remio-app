@@ -34,16 +34,27 @@ export default function RegisterNotificationsScreen() {
       router.replace('/today');
     } catch (err: any) {
       haptics.error();
+      const msg = err.message || 'Could not complete registration. Please check your backend connection.';
+      const isConflict = msg.toLowerCase().includes('already registered');
+
       Alert.alert(
         'Registration Notice',
-        err.message || 'Could not complete registration. Please check your backend connection.',
-        [
-          {
-            text: 'Proceed to Dashboard',
-            onPress: () => router.replace('/today'),
-          },
-          { text: 'Try Again', style: 'cancel' },
-        ]
+        msg,
+        isConflict
+          ? [
+              {
+                text: 'Sign In',
+                onPress: () => router.replace('/(onboarding)/login'),
+              },
+              { text: 'Cancel', style: 'cancel' },
+            ]
+          : [
+              {
+                text: 'Proceed to Dashboard',
+                onPress: () => router.replace('/today'),
+              },
+              { text: 'Try Again', style: 'cancel' },
+            ]
       );
     } finally {
       setLoading(false);
@@ -66,7 +77,7 @@ export default function RegisterNotificationsScreen() {
         </View>
 
         {/* Progress Bar (100%) */}
-        <ProgressBar progress={100} height={4} color={colors.primary} style={styles.progressBar} />
+        <ProgressBar progress={100} height={6} color={colors.primary} style={styles.progressBar} />
       </View>
 
       {/* Middle Content with Mock Notification Card */}
@@ -76,9 +87,9 @@ export default function RegisterNotificationsScreen() {
           <View style={styles.notifHeaderRow}>
             <View style={styles.notifBrand}>
               <View style={styles.notifIconCircle}>
-                <Bell size={16} color="#FFFFFF" />
+                <Bell size={15} color="#FFFFFF" />
               </View>
-              <Text style={styles.notifAppName}>Routine AI</Text>
+              <Text style={styles.notifAppName}>Remio</Text>
             </View>
             <Text style={styles.notifTime}>now</Text>
           </View>

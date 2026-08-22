@@ -34,15 +34,33 @@ export default function RoutineHistoryScreen() {
   const fetchHistory = useTaskStore((s) => s.fetchHistory);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [onTimeRate, setOnTimeRate] = useState<number | null>(null);
+
+  const loadSummary = async () => {
+    try {
+      const { api } = await import('../../services/api');
+      const insights = await api.getInsights().catch(() => null);
+      if (insights && insights.onTimeCompletionPercentage !== null && insights.onTimeCompletionPercentage !== undefined) {
+        setOnTimeRate(Math.round(insights.onTimeCompletionPercentage));
+      } else if (historyLogs.length > 0) {
+        setOnTimeRate(100);
+      } else {
+        setOnTimeRate(null);
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     fetchHistory().catch(() => {});
-  }, []);
+    loadSummary();
+  }, [historyLogs.length]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     haptics.light();
-    await fetchHistory().catch(() => {});
+    await Promise.all([fetchHistory().catch(() => {}), loadSummary()]);
     setRefreshing(false);
   };
 
@@ -70,13 +88,13 @@ export default function RoutineHistoryScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.primary}
-            colors={[theme.coral]}
+            colors={[theme.primary]}
           />
         }
       >
         {/* Screen Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Routine History</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Activity History</Text>
           <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
             Activity logs and completion patterns over time.
           </Text>
@@ -144,7 +162,7 @@ export default function RoutineHistoryScreen() {
               No Activity Logged Yet
             </Text>
             <Text style={[styles.emptyHistorySubtitle, { color: theme.secondaryText }]}>
-              Complete your routine tasks to build your habit history and train the AI model.
+              Complete your recurring routines to build your habit history.
             </Text>
           </View>
         )}
@@ -200,7 +218,7 @@ export default function RoutineHistoryScreen() {
           ]}
         >
           <View style={styles.summaryHeader}>
-            <BarChart3 size={20} color={theme.text} />
+            <BarChart3 size={18} color={theme.text} />
             <Text style={[styles.summaryTitle, { color: theme.text }]}>Activity Summary</Text>
           </View>
 
@@ -228,24 +246,10 @@ export default function RoutineHistoryScreen() {
               <Text style={[styles.microLabel, { color: theme.mutedText }]}>
                 ON-TIME RATE
               </Text>
-              <View style={styles.delayValueRow}>
-                <Text style={[styles.summaryValue, { color: theme.teal }]}>94%</Text>
-              </View>
+              <Text style={[styles.summaryValue, { color: theme.text }]}>
+                {onTimeRate !== null ? `${onTimeRate}%` : '—'}
+              </Text>
             </View>
-          </View>
-
-          <View
-            style={[
-              styles.accuracyTile,
-              { backgroundColor: theme.card, borderColor: theme.cardBorder },
-            ]}
-          >
-            <Text style={[styles.microLabel, { color: theme.mutedText }]}>
-              AI MODEL STATUS
-            </Text>
-            <Text style={[styles.accuracyValue, { color: theme.coral }]}>
-              Adaptive Learning Active
-            </Text>
           </View>
         </View>
       </ScrollView>

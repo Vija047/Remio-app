@@ -41,21 +41,37 @@ export default function RegisterNameScreen() {
   const [inputEmail, setInputEmail] = useState(email || '');
   const [inputPassword, setInputPassword] = useState(password || '');
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
+
+  const validate = () => {
+    const newErrors: { name?: string; email?: string; password?: string } = {};
+    const trimmedName = inputName.trim();
+    const trimmedEmail = inputEmail.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!trimmedName) {
+      newErrors.name = 'Please enter your name';
+    }
+
+    if (!trimmedEmail) {
+      newErrors.email = 'Please enter your email address';
+    } else if (!emailRegex.test(trimmedEmail)) {
+      newErrors.email = 'Enter a valid email address';
+    }
+
+    if (!inputPassword) {
+      newErrors.password = 'Please create a password';
+    } else if (inputPassword.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleContinue = () => {
-    if (!inputName.trim()) {
+    if (!validate()) {
       haptics.error();
-      Alert.alert('Missing Name', 'Please enter your name.');
-      return;
-    }
-    if (!inputEmail.trim()) {
-      haptics.error();
-      Alert.alert('Missing Email', 'Please enter your email address.');
-      return;
-    }
-    if (!inputPassword.trim() || inputPassword.length < 6) {
-      haptics.error();
-      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
       return;
     }
 
@@ -91,7 +107,7 @@ export default function RegisterNameScreen() {
       await googleLogin({
         email: googleEmail.toLowerCase(),
         name: formattedName || 'Google User',
-        photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        photoUrl: '',
       });
 
       await Promise.all([fetchTasks(), fetchHistory()]).catch(() => {});
@@ -130,11 +146,11 @@ export default function RegisterNameScreen() {
             </View>
 
             {/* Progress Bar (25%) */}
-            <ProgressBar progress={25} height={4} color={colors.primary} style={styles.progressBar} />
+            <ProgressBar progress={25} height={6} color={colors.primary} style={styles.progressBar} />
 
             {/* Content Area */}
             <View style={styles.content}>
-              <Text style={styles.title}>Let's create your{'\n'}account</Text>
+              <Text style={styles.title}>Let's create your account</Text>
               <Text style={styles.subtitle}>This allows Routine AI to learn and sync your routines.</Text>
 
               {/* Google Sign-Up Button */}
@@ -142,7 +158,7 @@ export default function RegisterNameScreen() {
                 title="Sign up with Google"
                 onPress={handleGoogleSignUp}
                 loading={googleLoading}
-                style={{ marginBottom: 16 }}
+                style={{ marginBottom: 22 }}
               />
 
               {/* Divider */}
@@ -153,31 +169,46 @@ export default function RegisterNameScreen() {
               </View>
 
               <View style={styles.inputSection}>
-                <Text style={styles.inputLabel}>Your Name</Text>
                 <Input
+                  label="Your Name"
                   placeholder="Enter your name"
                   value={inputName}
-                  onChangeText={setInputName}
+                  onChangeText={(val) => {
+                    setInputName(val);
+                    if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+                  }}
                   leftIcon={<User size={20} color={colors.secondaryText} />}
+                  error={errors.name}
+                  autoCapitalize="words"
                 />
 
-                <Text style={styles.inputLabel}>Email Address</Text>
                 <Input
+                  label="Email Address"
                   placeholder="name@example.com"
                   value={inputEmail}
-                  onChangeText={setInputEmail}
+                  onChangeText={(val) => {
+                    setInputEmail(val);
+                    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                  }}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
                   leftIcon={<Mail size={20} color={colors.secondaryText} />}
+                  error={errors.email}
                 />
 
-                <Text style={styles.inputLabel}>Password</Text>
                 <Input
-                  placeholder="Create a password (min 6 chars)"
+                  label="Password"
+                  placeholder="Create a password"
+                  helperText={!errors.password ? 'Minimum 8 characters' : undefined}
                   value={inputPassword}
-                  onChangeText={setInputPassword}
+                  onChangeText={(val) => {
+                    setInputPassword(val);
+                    if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                  }}
                   isPassword
                   leftIcon={<Lock size={20} color={colors.secondaryText} />}
+                  error={errors.password}
                 />
               </View>
             </View>
@@ -207,6 +238,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 24,
+    paddingTop: 8,
     paddingBottom: 24,
   },
   header: {
@@ -214,7 +246,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: 4,
   },
   circleBackBtn: {
     width: 44,
@@ -238,30 +270,31 @@ const styles = StyleSheet.create({
     width: 44,
   },
   progressBar: {
-    marginTop: 16,
+    marginTop: 14,
     marginBottom: 20,
   },
   content: {
     paddingTop: 4,
   },
   title: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800',
     color: colors.primaryText,
     letterSpacing: -0.8,
-    lineHeight: 36,
-    marginBottom: 8,
+    lineHeight: 34,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14.5,
     color: colors.secondaryText,
-    marginBottom: 18,
+    lineHeight: 20,
+    marginBottom: 20,
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 20,
   },
   dividerLine: {
     flex: 1,
@@ -270,20 +303,14 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     fontSize: 13,
-    color: colors.mutedText,
-    fontWeight: '500',
+    color: colors.secondaryText,
+    fontWeight: '600',
   },
   inputSection: {
-    marginTop: 4,
-  },
-  inputLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.primaryText,
-    marginBottom: 8,
-    marginTop: 4,
+    marginTop: 2,
+    gap: 4,
   },
   footer: {
-    paddingTop: 20,
+    paddingTop: 16,
   },
 });

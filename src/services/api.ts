@@ -1,17 +1,41 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
 // Default API URL resolution
 const getBaseUrl = (): string => {
+  // 1. Production or explicitly set environment variable (Highest Priority)
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
-  if (Platform.OS === 'android') {
-    // 10.0.2.2 points to host machine loopback in Android Emulator
-    return 'http://10.0.2.2:3000/api';
+
+  // 2. Development fallbacks ONLY when running under __DEV__
+  if (__DEV__) {
+    // Extract dev machine IP from Expo Metro host when running on physical device via Expo Go
+    const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest2?.extra?.expoGo?.developer?.tool;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (
+        ip &&
+        ip !== 'localhost' &&
+        ip !== '127.0.0.1' &&
+        !ip.includes('exp.direct') &&
+        !ip.includes('ngrok')
+      ) {
+        return `http://${ip}:3000/api`;
+      }
+    }
+
+    if (Platform.OS === 'android') {
+      // 10.0.2.2 points to host machine loopback in Android Emulator
+      return 'http://10.0.2.2:3000/api';
+    }
+    // iOS simulator or Web
+    return 'http://localhost:3000/api';
   }
-  // iOS simulator or Web
-  return 'http://localhost:3000/api';
+
+  // 3. Fallback error for missing production URL
+  throw new Error('EXPO_PUBLIC_API_URL environment variable is required in production builds.');
 };
 
 export const API_BASE_URL = getBaseUrl();
@@ -74,6 +98,18 @@ class ApiService {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
+        if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/register')) {
+          await this.setToken(null);
+          try {
+            const { useUserStore } = await import('../store/useUserStore');
+            useUserStore.setState({ token: null, isAuthenticated: false });
+          } catch {}
+          try {
+            const { router } = await import('expo-router');
+            router.replace('/(onboarding)/login');
+          } catch {}
+        }
+
         const errorMessage =
           (data && (data.message || data.error)) ||
           `Request failed with status ${response.status}`;
@@ -169,7 +205,7 @@ class ApiService {
     return this.request<any>('/users/profile');
   }
 
-  async updateProfile(dto: { name?: string }) {
+  async updateProfile(dto: { name?: string; avatarUrl?: string }) {
     return this.request<any>('/users/profile', {
       method: 'PATCH',
       body: JSON.stringify(dto),
@@ -286,6 +322,16 @@ class ApiService {
     });
   }
 
+  async uncompleteTask(id: string) {
+    return this.request<{
+      message: string;
+      prediction: any;
+    }>(`/tasks/${id}/complete`, {
+      method: 'DELETE',
+    });
+  }
+
+
   async getTaskHistory(id: string) {
     return this.request<
       Array<{
@@ -331,11 +377,10 @@ class ApiService {
 
   async getPreparation(id: string) {
     return this.request<{
-      taskId: string;
-      title: string;
-      preparationAdvice: string;
-      suggestedItemsToOrder?: string[];
-      estimatedLeadTimeDays?: number;
+      suggestion?: string;
+      preparationAdvice?: string;
+      taskId?: string;
+      title?: string;
     }>(`/tasks/${id}/preparation`);
   }
 
@@ -344,8 +389,11 @@ class ApiService {
     return this.request<{
       title: string;
       category: string;
-      estimatedIntervalDays: number;
-      reminderTime?: string;
+      description?: string | null;
+      recurrenceType?: 'fixed' | 'flexible';
+      intervalDays?: number | null;
+      reminderEnabled?: boolean;
+      estimatedIntervalDays?: number;
       notes?: string;
     }>('/ai/parse-task', {
       method: 'POST',
@@ -356,7 +404,7 @@ class ApiService {
   async getRoutineCoach() {
     return this.request<{
       summary: string;
-      recommendations: Array<{
+      recommendations: string[] | Array<{
         category: string;
         tip: string;
         priority: 'high' | 'medium' | 'low';
@@ -406,15 +454,91 @@ class ApiService {
     >('/notifications');
   }
 
+  async registerPushToken(pushToken: string) {
+    return this.request<any>('/notifications/push-token', {
+      method: 'POST',
+      body: JSON.stringify({ pushToken }),
+    });
+  }
+
   async markNotificationRead(id: string) {
     return this.request<any>(`/notifications/${id}/read`, {
       method: 'POST',
     });
   }
 
+  async createTestNotification() {
+    return this.request<any>('/notifications/test', {
+      method: 'POST',
+    });
+  }
+
   // --- SUBSCRIPTIONS ---
+  async getSubscriptionConfig() {
+    return this.request<{
+      pro: {
+        tier: string;
+        name: string;
+        monthlyPriceId: string;
+        yearlyPriceId: string;
+        features: string[];
+      };
+      pro_family: {
+        tier: string;
+        name: string;
+        monthlyPriceId: string;
+        yearlyPriceId: string;
+        features: string[];
+      };
+    }>('/subscription/config');
+  }
+
   async getSubscriptionStatus() {
-    return this.request<any>('/subscription/status');
+    return this.request<{
+      userId: string;
+      plan: string;
+      tier: string;
+      status: string;
+      isActive: boolean;
+      isPremium: boolean;
+      currentPeriodEnd?: string | null;
+      stripeCustomerId?: string | null;
+    }>('/subscription');
+  }
+
+  async createCheckoutSession(dto: {
+    priceId?: string;
+    tier?: 'pro' | 'pro_family';
+    interval?: 'monthly' | 'yearly';
+    successUrl?: string;
+    cancelUrl?: string;
+  }) {
+    return this.request<{ sessionId: string; url: string }>('/subscription/checkout-session', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async createCustomerPortalSession() {
+    return this.request<{ url: string }>('/subscription/customer-portal', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  async getFamilyMembers() {
+    return this.request<{
+      familyTierActive: boolean;
+      maxMembers: number;
+      members: Array<{ id: string; email: string; role: string; status: string }>;
+    }>('/subscription/family-members');
+  }
+
+  async upgradeSubscription(plan: string) {
+    return this.request<any>('/subscription/checkout-session', {
+      method: 'POST',
+      body: JSON.stringify({ tier: plan }),
+    });
   }
 }
 

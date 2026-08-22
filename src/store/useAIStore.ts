@@ -15,6 +15,7 @@ interface AIState {
   fetchTaskPrediction: (taskId: string, title?: string, emoji?: string) => Promise<PredictionDetail | null>;
   fetchRoutineCoach: () => Promise<void>;
   resetAIData: (options: { resetPatterns: boolean; resetConfidence: boolean; clearHistory: boolean }) => void;
+  resetAIStore: () => void;
 }
 
 export const useAIStore = create<AIState>((set, get) => ({
@@ -46,20 +47,27 @@ export const useAIStore = create<AIState>((set, get) => ({
         api.getPreparation(taskId).catch(() => null),
       ]);
 
-      const avgDays = pred?.averageIntervalDays ? Math.round(Number(pred.averageIntervalDays)) : 30;
-      const minDays = pred?.minDays ?? Math.max(1, avgDays - 4);
-      const bestDay = pred?.bestDay ?? avgDays;
-      const maxDays = pred?.maxDays ?? avgDays + 4;
-      const confidence = pred?.confidenceScore
+      const isLearning = !pred || pred.status === 'learning' || !pred.predictedDate;
+      const avgDays = pred?.averageIntervalDays ? Math.round(Number(pred.averageIntervalDays)) : 0;
+      const minDays = pred?.minDays ?? 0;
+      const bestDay = pred?.bestDay ?? 0;
+      const maxDays = pred?.maxDays ?? 0;
+      const confidence = (!isLearning && pred?.confidenceScore)
         ? Math.round(Number(pred.confidenceScore) * 100)
-        : 90;
+        : 0;
 
-      const idealWindowText = pred?.predictedDate
+      const idealWindowText = !isLearning && pred?.predictedDate
         ? `Target: ${new Date(pred.predictedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+        : isLearning
+        ? 'Learning Phase (Need ≥ 2 completions)'
         : `Between Day ${minDays} – ${maxDays}`;
 
-      const insightsText = prep?.preparationAdvice ||
-        `Routine AI calculated your schedule from previous completions. Average interval: ${avgDays} days. Optimal window is between Day ${minDays} and Day ${maxDays}.`;
+      const preparationText = prep?.suggestion || prep?.preparationAdvice;
+      const insightsText = preparationText
+        ? preparationText
+        : isLearning
+        ? 'Remio is currently analyzing your routine schedule. Complete this task at least twice to enable automated predictive intelligence.'
+        : `Remio calculated your schedule from previous completions. Average interval: ${avgDays} days. Optimal window is between Day ${minDays} and Day ${maxDays}.`;
 
       const detail: PredictionDetail = {
         taskId,
@@ -68,13 +76,13 @@ export const useAIStore = create<AIState>((set, get) => ({
         confidence,
         avgIntervalDays: avgDays,
         startDay: minDays,
-        bestDay,
+        bestDay: bestDay || avgDays,
         deadlineDay: maxDays,
         idealWindowText,
         insightsText,
         learningLogicText:
-          'Each time you log a task completion, Routine AI updates its predictive regression model to match your actual lifestyle habits.',
-        lastPrediction: Math.max(1, avgDays - 1),
+          'Each time you log a task completion, Remio updates its predictive model using EWMA and median interval regression.',
+        lastPrediction: avgDays,
         newPrediction: avgDays,
       };
 
@@ -107,4 +115,12 @@ export const useAIStore = create<AIState>((set, get) => ({
       activePrediction: null,
     }));
   },
+
+  resetAIStore: () =>
+    set({
+      confidenceLevel: 'high',
+      activePrediction: null,
+      aiCoachTip: null,
+      isLoading: false,
+    }),
 }));

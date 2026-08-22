@@ -20,6 +20,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
   const theme = useTheme();
   const haptics = useHaptics();
   const toggleTaskCompleted = useTaskStore((s) => s.toggleTaskCompleted);
+  const completingTaskIds = useTaskStore((s) => s.completingTaskIds);
+
+  const isCompleting = completingTaskIds.includes(task.id);
 
   const handleCardPress = () => {
     haptics.light();
@@ -30,6 +33,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
   };
 
   const handleToggle = () => {
+    if (isCompleting) return;
     haptics.success();
     toggleTaskCompleted(task.id);
   };
@@ -51,77 +55,56 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
         <Checkbox
           checked={task.completed}
           onToggle={handleToggle}
-          size={26}
+          size={24}
           style={styles.checkbox}
         />
 
         <View style={styles.titleArea}>
-          <View style={styles.titleRow}>
-            <Text
-              style={[
-                styles.title,
-                { color: theme.text },
-                task.completed && styles.strikethrough,
-              ]}
-              numberOfLines={1}
-            >
-              {`${task.emoji} ${task.title}`}
-            </Text>
-            {task.isAiSuggested && (
-              <Badge
-                label="AI Predicted"
-                variant="ai"
-                icon={<Sparkles size={11} color="#374151" />}
-              />
-            )}
-          </View>
+          <Text
+            style={[
+              styles.title,
+              { color: theme.text },
+              task.completed && styles.strikethrough,
+            ]}
+            numberOfLines={1}
+          >
+            {`${task.emoji} ${task.title}`}
+          </Text>
           <Text style={[styles.dueLabel, { color: theme.secondaryText }]}>
             {task.dueLabel}
           </Text>
         </View>
       </View>
 
-      {/* Task card metadata & extra pills */}
-      <View style={styles.bottomContent}>
-        <View style={styles.metaRow}>
-          {task.smartWindowStatus && (
-            <View
-              style={[
-                styles.smartWindowPill,
-                {
-                  backgroundColor: theme.card,
-                  borderColor: theme.border,
-                },
-              ]}
-            >
-              <LayoutGrid size={13} color={theme.text} />
-              <Text style={[styles.smartWindowText, { color: theme.text }]}>
-                Window: {task.smartWindowStatus}
-              </Text>
-            </View>
-          )}
-
-          {task.confidence > 0 && (
-            <View style={styles.confidenceRow}>
-              <View style={styles.progressBarWrapper}>
-                <ProgressBar
-                  progress={task.confidence}
-                  height={5}
-                  color={theme.teal}
-                  backgroundColor={theme.border}
-                />
-              </View>
-              <Text
-                style={[
-                  styles.confidenceText,
-                  { color: theme.secondaryText },
-                ]}
-              >
-                {task.confidence}% Conf.
-              </Text>
-            </View>
-          )}
+      {/* Clean Bottom Row: AI badge + Confidence */}
+      <View style={styles.bottomRow}>
+        <View
+          style={[
+            styles.aiBadge,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Sparkles size={11} color={theme.text} />
+          <Text style={[styles.aiBadgeText, { color: theme.text }]}>
+            AI predicted
+          </Text>
         </View>
+
+        {task.confidence > 0 && (
+          <View style={styles.confidenceRow}>
+            <View style={styles.progressBarWrapper}>
+              <ProgressBar
+                progress={task.confidence}
+                height={4}
+                color={theme.primary}
+                backgroundColor={theme.border}
+              />
+            </View>
+            <Text style={[styles.confidenceText, { color: theme.secondaryText }]}>
+              {task.confidence}% confidence
+            </Text>
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -129,13 +112,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: radii['3xl'],
-    padding: 18,
-    marginBottom: 12,
+    borderRadius: radii['2xl'],
+    padding: 16,
+    marginBottom: 10,
     borderWidth: 1,
   },
   completedContainer: {
-    opacity: 0.65,
+    opacity: 0.55,
   },
   pressed: {
     opacity: 0.9,
@@ -147,68 +130,56 @@ const styles = StyleSheet.create({
   },
   checkbox: {
     marginTop: 2,
-    marginRight: 14,
+    marginRight: 12,
   },
   titleArea: {
     flex: 1,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
   title: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: -0.3,
-    flexShrink: 1,
+    letterSpacing: -0.2,
   },
   strikethrough: {
     textDecorationLine: 'line-through',
-    opacity: 0.6,
+    color: '#9CA3AF',
   },
   dueLabel: {
-    fontSize: 14,
+    fontSize: 13,
     marginTop: 2,
-    fontWeight: '400',
+    fontWeight: '500',
   },
-  bottomContent: {
-    marginTop: 10,
-    paddingLeft: 40,
-  },
-  metaRow: {
+  bottomRow: {
+    marginTop: 12,
+    paddingLeft: 36,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: 12,
   },
-  smartWindowPill: {
+  aiBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: radii.full,
-    gap: 5,
+    gap: 4,
     borderWidth: 1,
   },
-  smartWindowText: {
+  aiBadgeText: {
     fontSize: 11,
     fontWeight: '600',
   },
   confidenceRow: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
     gap: 8,
   },
   progressBarWrapper: {
-    flex: 1,
-    maxWidth: 70,
+    width: 48,
   },
   confidenceText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });

@@ -61,7 +61,7 @@ export default function RegisterCategoriesScreen() {
         </View>
 
         {/* Progress Bar (75%) */}
-        <ProgressBar progress={75} height={4} color={colors.primary} style={styles.progressBar} />
+        <ProgressBar progress={75} height={6} color={colors.primary} style={styles.progressBar} />
 
         {/* Content Area */}
         <View style={styles.content}>

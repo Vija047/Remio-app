@@ -110,6 +110,10 @@ export interface UserProfile {
   email: string;
   avatarUrl: string;
   isPremium: boolean;
+  subscriptionStatus?: string;
+  subscriptionTier?: string;
+  currentPeriodEnd?: string | null;
+  stripeCustomerId?: string | null;
   premiumTier?: 'monthly' | 'yearly' | 'lifetime';
   ageGroup?: string;
   lifestyle?: string;

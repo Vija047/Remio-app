@@ -78,7 +78,7 @@ export default function PredictionConfidenceScreen() {
         <View style={styles.titleSection}>
           <Text style={[styles.title, { color: theme.text }]}>Prediction Confidence</Text>
           <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
-            Adjust how certain Routine AI must be before triggering smart reminders.
+            Adjust how certain Remio must be before triggering smart reminders.
           </Text>
         </View>
 

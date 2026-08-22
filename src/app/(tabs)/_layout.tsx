@@ -20,7 +20,7 @@ export default function TabsLayout() {
           },
         ],
         tabBarShowLabel: true,
-        tabBarActiveTintColor: theme.coral,
+        tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.mutedText,
         tabBarLabelStyle: styles.tabBarLabel,
       }}
@@ -34,7 +34,7 @@ export default function TabsLayout() {
               style={[
                 styles.iconContainer,
                 focused && {
-                  backgroundColor: theme.isDark ? '#232733' : '#F3F4F6',
+                  backgroundColor: theme.isDark ? '#232733' : '#F4F4F5',
                 },
               ]}
             >
@@ -46,13 +46,13 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="routine"
         options={{
-          title: 'Routine',
+          title: 'History',
           tabBarIcon: ({ color, focused }) => (
             <View
               style={[
                 styles.iconContainer,
                 focused && {
-                  backgroundColor: theme.isDark ? '#232733' : '#F3F4F6',
+                  backgroundColor: theme.isDark ? '#232733' : '#F4F4F5',
                 },
               ]}
             >
@@ -70,7 +70,7 @@ export default function TabsLayout() {
               style={[
                 styles.iconContainer,
                 focused && {
-                  backgroundColor: theme.isDark ? '#232733' : '#F3F4F6',
+                  backgroundColor: theme.isDark ? '#232733' : '#F4F4F5',
                 },
               ]}
             >
@@ -88,7 +88,7 @@ export default function TabsLayout() {
               style={[
                 styles.iconContainer,
                 focused && {
-                  backgroundColor: theme.isDark ? '#232733' : '#F3F4F6',
+                  backgroundColor: theme.isDark ? '#232733' : '#F4F4F5',
                 },
               ]}
             >

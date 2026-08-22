@@ -68,11 +68,11 @@ export default function LearningModeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Title Section */}
+        {/* Subtitle */}
         <View style={styles.titleSection}>
           <Text style={[styles.title, { color: theme.text }]}>Learning Parameters</Text>
           <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
-            Configure how Routine AI analyzes completions to predict recurring dates.
+            Configure how Remio analyzes completions to predict recurring dates.
           </Text>
         </View>
 
@@ -86,15 +86,15 @@ export default function LearningModeScreen() {
             },
           ]}
         >
-          <View style={[styles.sparkleCircle, { backgroundColor: theme.coralLight }]}>
-            <Sparkles size={20} color={theme.coral} />
+          <View style={[styles.sparkleCircle, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
+            <Sparkles size={20} color={theme.text} />
           </View>
           <View style={styles.infoContent}>
             <Text style={[styles.infoTitle, { color: theme.text }]}>
               Adaptive Interval Regression
             </Text>
             <Text style={[styles.infoDesc, { color: theme.secondaryText }]}>
-              Routine AI learns from every completion timestamp. As you record more activity, interval variance shrinks and prediction windows tighten.
+              Remio learns from every completion timestamp. As you record more activity, interval variance shrinks and prediction windows tighten.
             </Text>
           </View>
         </View>

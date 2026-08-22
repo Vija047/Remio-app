@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { UserProfile, NotificationSettings } from '../types';
 import { api } from '../services/api';
+import { notificationService } from '../services/notificationService';
+import { useTaskStore } from './useTaskStore';
+import { useAIStore } from './useAIStore';
 
 interface UserState {
   user: UserProfile;
@@ -20,7 +23,11 @@ interface UserState {
   register: (name: string, email: string, password: string) => Promise<boolean>;
   googleLogin: (dto: { email: string; name?: string; idToken?: string; photoUrl?: string }) => Promise<boolean>;
   fetchProfile: () => Promise<void>;
+  fetchSubscriptionStatus: () => Promise<void>;
+  createCheckoutSession: (dto: { priceId?: string; tier?: 'pro' | 'pro_family'; interval?: 'monthly' | 'yearly'; successUrl?: string; cancelUrl?: string }) => Promise<{ url: string }>;
+  openCustomerPortal: () => Promise<{ url: string }>;
   setUserName: (name: string) => void;
+  updateAvatar: (avatarUrl: string) => Promise<void>;
   setAgeGroup: (ageGroup: string) => void;
   setLifestyle: (lifestyle: string) => void;
   setSelectedCategories: (categories: string[]) => void;
@@ -36,7 +43,7 @@ interface UserState {
 const DEFAULT_USER: UserProfile = {
   name: 'Vijay',
   email: 'vijay@example.com',
-  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  avatarUrl: '',
   isPremium: false,
   ageGroup: '25–34',
   lifestyle: 'Working Professional',
@@ -90,6 +97,7 @@ export const useUserStore = create<UserState>((set, get) => ({
             ...get().user,
             name: me.name || get().user.name,
             email: me.email || get().user.email,
+            avatarUrl: (me as any).avatarUrl || get().user.avatarUrl || '',
             isPremium: me.subscription?.status === 'active',
           },
           darkMode: isDark,
@@ -122,6 +130,7 @@ export const useUserStore = create<UserState>((set, get) => ({
             ...get().user,
             name: res.user.name,
             email: res.user.email,
+            avatarUrl: (res.user as any).avatarUrl || '',
           },
         });
         // Refresh full profile in background
@@ -149,8 +158,12 @@ export const useUserStore = create<UserState>((set, get) => ({
             ...get().user,
             name: res.user.name,
             email: res.user.email,
+            avatarUrl: (res.user as any).avatarUrl || '',
           },
         });
+        // Request permissions and send welcome reminder
+        notificationService.requestPermissions().catch(() => {});
+        notificationService.sendWelcomeNotification(res.user.name).catch(() => {});
         return true;
       }
       set({ isLoading: false, error: 'Registration failed' });
@@ -174,7 +187,7 @@ export const useUserStore = create<UserState>((set, get) => ({
             ...get().user,
             name: res.user.name || dto.name || 'Google User',
             email: res.user.email || dto.email,
-            avatarUrl: dto.photoUrl || get().user.avatarUrl,
+            avatarUrl: (res.user as any).avatarUrl || dto.photoUrl || '',
           },
         });
         get().fetchProfile().catch(() => {});
@@ -192,12 +205,21 @@ export const useUserStore = create<UserState>((set, get) => ({
     try {
       const profile = await api.getProfile();
       if (profile) {
+        const subStatus = profile.subscriptionStatus || profile.subscription?.status || 'free';
+        const subTier = profile.subscriptionTier || profile.subscription?.plan || 'free';
+        const isPrem = subStatus === 'active' || subStatus === 'trialing';
+
         set((state) => ({
           user: {
             ...state.user,
             name: profile.name || state.user.name,
             email: profile.email || state.user.email,
-            isPremium: profile.subscription?.status === 'active',
+            avatarUrl: profile.avatarUrl !== undefined ? profile.avatarUrl : state.user.avatarUrl,
+            isPremium: isPrem,
+            subscriptionStatus: subStatus,
+            subscriptionTier: subTier,
+            currentPeriodEnd: profile.currentPeriodEnd,
+            stripeCustomerId: profile.stripeCustomerId,
           },
           darkMode: profile.settings?.darkMode ?? state.darkMode,
           smartPredictionEnabled:
@@ -209,9 +231,64 @@ export const useUserStore = create<UserState>((set, get) => ({
     }
   },
 
+  fetchSubscriptionStatus: async () => {
+    try {
+      const sub = await api.getSubscriptionStatus();
+      if (sub) {
+        set((state) => ({
+          user: {
+            ...state.user,
+            isPremium: sub.isPremium,
+            subscriptionStatus: sub.status,
+            subscriptionTier: sub.tier,
+            currentPeriodEnd: sub.currentPeriodEnd,
+            stripeCustomerId: sub.stripeCustomerId,
+          },
+        }));
+      }
+    } catch {
+      // ignore
+    }
+  },
+
+  createCheckoutSession: async (dto) => {
+    try {
+      set({ isLoading: true, error: null });
+      const res = await api.createCheckoutSession(dto);
+      return res;
+    } catch (err: any) {
+      set({ error: err.message || 'Failed to create checkout session' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  openCustomerPortal: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      const res = await api.createCustomerPortalSession();
+      return res;
+    } catch (err: any) {
+      set({ error: err.message || 'Failed to open billing portal' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   setUserName: (name) => {
     set((state) => ({ user: { ...state.user, name } }));
     api.updateProfile({ name }).catch(() => {});
+  },
+
+  updateAvatar: async (avatarUrl: string) => {
+    set((state) => ({ user: { ...state.user, avatarUrl } }));
+    try {
+      await api.updateProfile({ avatarUrl });
+    } catch {
+      // ignore
+    }
   },
 
   setAgeGroup: (ageGroup) =>
@@ -258,13 +335,22 @@ export const useUserStore = create<UserState>((set, get) => ({
     }
   },
 
-  upgradeToPremium: (tier) =>
-    set((state) => ({
-      user: { ...state.user, isPremium: true, premiumTier: tier },
-    })),
+  upgradeToPremium: async (tier) => {
+    try {
+      set({ isLoading: true, error: null });
+      await api.upgradeSubscription(tier);
+      await get().fetchProfile();
+    } catch (err: any) {
+      set({ isLoading: false, error: err.message || 'Subscription failed' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 
   logout: async () => {
     await api.setToken(null);
+    useTaskStore.getState().resetTaskStore();
+    useAIStore.getState().resetAIStore();
     set({
       token: null,
       isAuthenticated: false,
@@ -277,6 +363,8 @@ export const useUserStore = create<UserState>((set, get) => ({
       await api.deleteAccount();
     } finally {
       await api.setToken(null);
+      useTaskStore.getState().resetTaskStore();
+      useAIStore.getState().resetAIStore();
       set({
         token: null,
         isAuthenticated: false,

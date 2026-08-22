@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,13 +18,19 @@ import {
   Moon,
   ArrowRight,
   ChevronRight,
+  Send,
+  Clock,
+  CheckCircle2,
+  ShieldCheck,
 } from 'lucide-react-native';
 import { radii } from '../../theme/radii';
 import { Switch } from '../../components/ui/Switch';
 import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
 import { useUserStore } from '../../store/useUserStore';
 import { useTheme } from '../../hooks/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
+import { notificationService } from '../../services/notificationService';
 
 export default function NotificationSettingsScreen() {
   const router = useRouter();
@@ -31,6 +38,64 @@ export default function NotificationSettingsScreen() {
   const haptics = useHaptics();
   const notif = useUserStore((s) => s.notificationSettings);
   const updateSettings = useUserStore((s) => s.updateNotificationSettings);
+
+  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
+  const [testingInstant, setTestingInstant] = useState(false);
+  const [testingDelayed, setTestingDelayed] = useState(false);
+
+  useEffect(() => {
+    notificationService.getPermissionStatus().then(setPermissionGranted);
+  }, []);
+
+  const handleRequestPermission = async () => {
+    haptics.light();
+    const granted = await notificationService.requestPermissions();
+    setPermissionGranted(granted);
+    if (granted) {
+      haptics.success();
+      Alert.alert('Permission Granted', 'Routine push notifications are now fully enabled.');
+    } else {
+      Alert.alert('Permission Denied', 'Please enable notifications in your system app settings.');
+    }
+  };
+
+  const handleSendTest = async () => {
+    try {
+      setTestingInstant(true);
+      haptics.light();
+      const id = await notificationService.sendImmediateTestNotification(
+        '🔔 Remio Reminder Settings Test',
+        'Test reminder triggered from Notification Settings. Your alerts are active!'
+      );
+      if (id) {
+        haptics.success();
+        Alert.alert('Test Notification Sent', 'Check your device notification tray to see the reminder.');
+      }
+    } finally {
+      setTestingInstant(false);
+    }
+  };
+
+  const handleSendDelayedTest = async (seconds = 5) => {
+    try {
+      setTestingDelayed(true);
+      haptics.light();
+      const id = await notificationService.scheduleDelayedTestNotification(
+        seconds,
+        '⏰ Remio Background Reminder Test',
+        `Success! Scheduled test notification arrived after ${seconds} seconds.`
+      );
+      if (id) {
+        haptics.success();
+        Alert.alert(
+          'Delayed Test Queued',
+          `Notification will appear in ${seconds} seconds. You can lock or minimize the app to verify background delivery.`
+        );
+      }
+    } finally {
+      setTestingDelayed(false);
+    }
+  };
 
   const handleSelectSound = () => {
     haptics.light();
@@ -65,7 +130,7 @@ export default function NotificationSettingsScreen() {
         <View style={styles.titleSection}>
           <Text style={[styles.title, { color: theme.text }]}>Notifications</Text>
           <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
-            Manage how Routine AI communicates with you.
+            Manage how Remio communicates with you.
           </Text>
         </View>
 
@@ -100,6 +165,106 @@ export default function NotificationSettingsScreen() {
             }}
             showCheckmark
           />
+        </View>
+
+        {/* Permission Diagnostics & Quick Test Card */}
+        <View
+          style={[
+            styles.testSettingsCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
+          <View style={styles.testSettingsHeader}>
+            <View style={styles.testSettingsHeaderLeft}>
+              <ShieldCheck
+                size={20}
+                color={permissionGranted ? theme.teal : theme.coral}
+              />
+              <Text style={[styles.testSettingsTitle, { color: theme.text }]}>
+                Notification System & Testing
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.permBadge,
+                {
+                  backgroundColor: permissionGranted ? theme.tealLight : theme.coralLight,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.permBadgeText,
+                  { color: permissionGranted ? theme.teal : theme.coral },
+                ]}
+              >
+                {permissionGranted === null
+                  ? 'Checking...'
+                  : permissionGranted
+                  ? 'Permission Active'
+                  : 'Permission Missing'}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={[styles.testSettingsDesc, { color: theme.secondaryText }]}>
+            Send simulated routine push alerts to confirm sounds, banners, and background triggers on this device.
+          </Text>
+
+          <View style={styles.testButtonGrid}>
+            <Pressable
+              onPress={handleSendTest}
+              disabled={testingInstant}
+              style={({ pressed }) => [
+                styles.testActionBtn,
+                { backgroundColor: theme.coral },
+                pressed && styles.btnPressed,
+              ]}
+            >
+              {testingInstant ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Send size={15} color="#FFFFFF" />
+                  <Text style={styles.testActionBtnText}>Instant Push Test</Text>
+                </>
+              )}
+            </Pressable>
+
+            <Pressable
+              onPress={() => handleSendDelayedTest(5)}
+              disabled={testingDelayed}
+              style={({ pressed }) => [
+                styles.testActionBtnSecondary,
+                { backgroundColor: theme.cardMuted, borderColor: theme.border },
+                pressed && styles.btnPressed,
+              ]}
+            >
+              {testingDelayed ? (
+                <ActivityIndicator size="small" color={theme.text} />
+              ) : (
+                <>
+                  <Clock size={15} color={theme.text} />
+                  <Text style={[styles.testActionBtnSecondaryText, { color: theme.text }]}>
+                    5s Background Test
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+
+          {!permissionGranted && (
+            <Button
+              title="Request System Notification Permission"
+              variant="outline"
+              size="sm"
+              onPress={handleRequestPermission}
+              style={styles.permRequestBtn}
+            />
+          )}
         </View>
 
         {/* Grouped Switches Card */}
@@ -467,5 +632,78 @@ const styles = StyleSheet.create({
   timeValue: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  testSettingsCard: {
+    borderRadius: radii['3xl'],
+    borderWidth: 1,
+    padding: 18,
+    marginBottom: 16,
+    gap: 12,
+  },
+  testSettingsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  testSettingsHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  testSettingsTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  permBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radii.full,
+  },
+  permBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  testSettingsDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  testButtonGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  testActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: radii.full,
+    gap: 6,
+  },
+  testActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  testActionBtnSecondary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    gap: 6,
+  },
+  testActionBtnSecondaryText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  permRequestBtn: {
+    marginTop: 6,
   },
 });

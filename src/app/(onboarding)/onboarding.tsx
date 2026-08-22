@@ -33,25 +33,25 @@ interface OnboardingSlide {
 const ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
     title: 'Never forget recurring life maintenance again.',
-    subtitle: 'Stay ahead of the recurring tasks you usually forget.',
+    subtitle: 'No fixed reminders — Remio adapts to your real habits.',
     image: require('../../../assets/onboarding-images/onboding-01.svg'),
     ctaText: 'Continue →',
   },
   {
-    title: 'AI learns your routine.',
-    subtitle: 'Remio learns from your habits and recurring tasks.',
+    title: 'Remio learns your routine.',
+    subtitle: 'Remio learns from your actual habits and completion patterns.',
     image: require('../../../assets/onboarding-images/onboarding-02.svg'),
     ctaText: 'Continue →',
   },
   {
-    title: "Know what's coming next.",
+    title: "Stay ahead of every recurring task.",
     subtitle: 'Remio predicts when recurring tasks are likely to come back.',
     image: require('../../../assets/onboarding-images/onboarding-03.svg'),
     ctaText: 'Continue →',
   },
   {
     title: 'Everything in one place.',
-    subtitle: 'Manage your recurring tasks from a single hub.',
+    subtitle: 'Manage all your recurring routines from a single hub.',
     image: require('../../../assets/onboarding-images/onboarding-04.svg'),
     ctaText: 'Get Started →',
   },

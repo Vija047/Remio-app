@@ -15,6 +15,7 @@ import { radii } from '../../theme/radii';
 
 export interface InputProps extends TextInputProps {
   label?: string;
+  helperText?: string;
   leftIcon?: React.ReactNode;
   isPassword?: boolean;
   isSearch?: boolean;
@@ -25,6 +26,7 @@ export interface InputProps extends TextInputProps {
 
 export const Input: React.FC<InputProps> = ({
   label,
+  helperText,
   leftIcon,
   isPassword = false,
   isSearch = false,
@@ -58,10 +60,12 @@ export const Input: React.FC<InputProps> = ({
             rest.multiline && styles.multilineInput,
             inputStyle,
           ]}
-          placeholderTextColor={colors.mutedText}
+          placeholderTextColor="#9CA3AF"
           secureTextEntry={isPassword && !showPassword}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
+          autoCapitalize={rest.autoCapitalize ?? 'none'}
+          autoCorrect={rest.autoCorrect ?? false}
           {...rest}
         />
 
@@ -79,7 +83,11 @@ export const Input: React.FC<InputProps> = ({
           </Pressable>
         )}
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : helperText ? (
+        <Text style={styles.helperText}>{helperText}</Text>
+      ) : null}
     </View>
   );
 };
@@ -91,37 +99,43 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.primaryText,
     marginBottom: 8,
+    letterSpacing: -0.1,
   },
   inputContainer: {
     height: 56,
-    borderRadius: radii.full,
+    borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: '#D9DDE3',
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
   },
   multilineContainer: {
     height: 120,
-    borderRadius: radii['2xl'],
+    borderRadius: 16,
     alignItems: 'flex-start',
     paddingVertical: 14,
   },
   inputFocused: {
-    borderColor: colors.primary,
+    borderColor: colors.coral,
+    borderWidth: 1.8,
   },
   inputError: {
     borderColor: colors.red,
+    borderWidth: 1.8,
   },
   input: {
     flex: 1,
     height: '100%',
     fontSize: 16,
     color: colors.primaryText,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    margin: 0,
   },
   multilineInput: {
     height: '100%',
@@ -129,14 +143,27 @@ const styles = StyleSheet.create({
   },
   leftIcon: {
     marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   rightIcon: {
     marginLeft: 10,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorText: {
     fontSize: 12,
+    fontWeight: '500',
     color: colors.red,
     marginTop: 4,
-    marginLeft: 14,
+    marginLeft: 4,
+  },
+  helperText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.secondaryText,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });

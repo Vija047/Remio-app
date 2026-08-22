@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,12 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import {
   X,
   Infinity as InfinityIcon,
@@ -20,12 +23,14 @@ import {
   Headphones,
   History,
   Sparkles,
+  CheckCircle2,
 } from 'lucide-react-native';
 import { radii } from '../../theme/radii';
 import { Button } from '../../components/ui/Button';
 import { useUserStore } from '../../store/useUserStore';
 import { useTheme } from '../../hooks/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
+import { api } from '../../services/api';
 
 const PREMIUM_FEATURES = [
   { id: '1', title: 'Unlimited Tasks', icon: (props: any) => <InfinityIcon {...props} /> },
@@ -40,26 +45,89 @@ const PREMIUM_FEATURES = [
 
 export default function PremiumUpgradeScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ status?: string }>();
   const theme = useTheme();
   const haptics = useHaptics();
   const user = useUserStore((s) => s.user);
-  const upgradeToPremium = useUserStore((s) => s.upgradeToPremium);
+  const createCheckoutSession = useUserStore((s) => s.createCheckoutSession);
+  const fetchSubscriptionStatus = useUserStore((s) => s.fetchSubscriptionStatus);
 
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | 'lifetime'>('yearly');
+  const [selectedTier, setSelectedTier] = useState<'pro' | 'pro_family'>('pro');
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
+  const [loadingConfig, setLoadingConfig] = useState<boolean>(true);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [pricingConfig, setPricingConfig] = useState<any>(null);
 
-  const handleStartTrial = () => {
+  useEffect(() => {
+    if (params?.status === 'success') {
+      fetchSubscriptionStatus();
+      Alert.alert('Subscription Activated! 🎉', 'Welcome to RoutineAI Pro. All premium features are active on your account.');
+    } else if (params?.status === 'cancel') {
+      Alert.alert('Checkout Canceled', 'No payment was processed.');
+    }
+  }, [params?.status]);
+
+  useEffect(() => {
+    let isMounted = true;
+    api
+      .getSubscriptionConfig()
+      .then((config) => {
+        if (isMounted) {
+          setPricingConfig(config);
+          setLoadingConfig(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setLoadingConfig(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleCheckout = async () => {
     haptics.success();
-    upgradeToPremium(selectedPlan);
-    Alert.alert(
-      'Welcome to Routine AI Premium!',
-      'You now have full access to unlimited routines, deep AI predictions, and advanced habit analytics.',
-      [
-        {
-          text: 'Continue',
-          onPress: () => router.back(),
-        },
-      ]
-    );
+    setSubmitting(true);
+
+    try {
+      let targetPriceId: string | undefined;
+      if (pricingConfig) {
+        const tierConfig = pricingConfig[selectedTier];
+        if (tierConfig) {
+          targetPriceId =
+            billingCycle === 'yearly'
+              ? tierConfig.yearlyPriceId
+              : tierConfig.monthlyPriceId;
+        }
+      }
+
+      // Mobile deep link return URLs
+      const successUrl = Linking.createURL('settings/premium', { queryParams: { status: 'success' } });
+      const cancelUrl = Linking.createURL('settings/premium', { queryParams: { status: 'cancel' } });
+
+      const res = await createCheckoutSession({
+        priceId: targetPriceId,
+        tier: selectedTier,
+        interval: billingCycle,
+        successUrl,
+        cancelUrl,
+      });
+
+      if (res && res.url) {
+        // Open Stripe hosted checkout page
+        const supported = await WebBrowser.openBrowserAsync(res.url);
+        if (supported.type !== 'opened' && supported.type !== 'dismiss') {
+          await Linking.openURL(res.url);
+        }
+      } else {
+        Alert.alert('Error', 'Unable to initiate Stripe checkout. Please try again.');
+      }
+    } catch (err: any) {
+      Alert.alert('Checkout Error', err.message || 'Failed to start Stripe Checkout');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -76,7 +144,7 @@ export default function PremiumUpgradeScreen() {
         >
           <X size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.headerBrand, { color: theme.text }]}>Routine AI</Text>
+        <Text style={[styles.headerBrand, { color: theme.text }]}>RoutineAI Pro</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -99,15 +167,128 @@ export default function PremiumUpgradeScreen() {
         {/* Headline */}
         <View style={styles.headlineArea}>
           <Text style={[styles.headline, { color: theme.text }]}>
-            Upgrade to Routine AI{'\n'}Premium
+            Upgrade Your Routine Intelligence
           </Text>
           <Text style={[styles.subheadline, { color: theme.secondaryText }]}>
-            Unlock unlimited routine tracking and predictive intelligence.
+            Choose a plan to unlock unlimited routines, insights, and family sharing.
           </Text>
         </View>
 
+        {/* Billing Cycle Toggle (Monthly vs Yearly) */}
+        <View style={[styles.toggleContainer, { backgroundColor: theme.cardMuted }]}>
+          <Pressable
+            onPress={() => {
+              haptics.light();
+              setBillingCycle('monthly');
+            }}
+            style={[
+              styles.toggleBtn,
+              billingCycle === 'monthly' && { backgroundColor: theme.card },
+            ]}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                { color: billingCycle === 'monthly' ? theme.text : theme.secondaryText },
+              ]}
+            >
+              Monthly Billing
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              haptics.light();
+              setBillingCycle('yearly');
+            }}
+            style={[
+              styles.toggleBtn,
+              billingCycle === 'yearly' && { backgroundColor: theme.card },
+            ]}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                { color: billingCycle === 'yearly' ? theme.text : theme.secondaryText },
+              ]}
+            >
+              Yearly (Save 20%)
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Subscription Plan Tiers (Pro vs Pro + Family) */}
+        <View style={styles.plansContainer}>
+          {/* Pro Tier */}
+          <Pressable
+            onPress={() => {
+              haptics.light();
+              setSelectedTier('pro');
+            }}
+            style={[
+              styles.planCard,
+              {
+                backgroundColor: theme.card,
+                borderColor: selectedTier === 'pro' ? theme.coral : theme.cardBorder,
+              },
+            ]}
+          >
+            <View style={styles.planHeader}>
+              <Text style={[styles.planName, { color: theme.text }]}>Pro Tier</Text>
+              {selectedTier === 'pro' && <CheckCircle2 size={22} color={theme.coral} />}
+            </View>
+            <Text style={[styles.planSub, { color: theme.secondaryText }]}>
+              For individual power users
+            </Text>
+            <View style={styles.priceRow}>
+              <Text style={[styles.planPrice, { color: theme.text }]}>
+                {billingCycle === 'yearly' ? '$7.99' : '$9.99'}
+              </Text>
+              <Text style={[styles.planPeriod, { color: theme.secondaryText }]}>
+                /{billingCycle === 'yearly' ? 'mo (billed annually)' : 'month'}
+              </Text>
+            </View>
+          </Pressable>
+
+          {/* Pro + Family Tier */}
+          <Pressable
+            onPress={() => {
+              haptics.light();
+              setSelectedTier('pro_family');
+            }}
+            style={[
+              styles.planCard,
+              styles.recommendedCard,
+              {
+                backgroundColor: theme.card,
+                borderColor: selectedTier === 'pro_family' ? theme.coral : theme.cardBorder,
+              },
+            ]}
+          >
+            <View style={[styles.recommendedBadge, { backgroundColor: theme.coral }]}>
+              <Text style={styles.recommendedBadgeText}>FAMILY VALUE</Text>
+            </View>
+
+            <View style={styles.planHeader}>
+              <Text style={[styles.planName, { color: theme.text }]}>Pro + Family Tier</Text>
+              {selectedTier === 'pro_family' && <CheckCircle2 size={22} color={theme.coral} />}
+            </View>
+            <Text style={[styles.planSub, { color: theme.secondaryText }]}>
+              Include up to 5 family members
+            </Text>
+            <View style={styles.priceRow}>
+              <Text style={[styles.planPrice, { color: theme.text }]}>
+                {billingCycle === 'yearly' ? '$14.99' : '$19.99'}
+              </Text>
+              <Text style={[styles.planPeriod, { color: theme.secondaryText }]}>
+                /{billingCycle === 'yearly' ? 'mo (billed annually)' : 'month'}
+              </Text>
+            </View>
+          </Pressable>
+        </View>
+
         {/* Feature Grid */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Premium Features</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Included Features</Text>
         <View style={styles.featureGrid}>
           {PREMIUM_FEATURES.map((item) => (
             <View
@@ -138,87 +319,18 @@ export default function PremiumUpgradeScreen() {
           ))}
         </View>
 
-        {/* Subscription Plan Tiers */}
-        <View style={styles.plansContainer}>
-          {/* Monthly */}
-          <Pressable
-            onPress={() => {
-              haptics.light();
-              setSelectedPlan('monthly');
-            }}
-            style={[
-              styles.planCard,
-              {
-                backgroundColor: theme.card,
-                borderColor: selectedPlan === 'monthly' ? theme.coral : theme.cardBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.planName, { color: theme.text }]}>Monthly</Text>
-            <View style={styles.priceRow}>
-              <Text style={[styles.planPrice, { color: theme.text }]}>$9.99</Text>
-              <Text style={[styles.planPeriod, { color: theme.secondaryText }]}>/mo</Text>
-            </View>
-          </Pressable>
-
-          {/* Yearly (RECOMMENDED) */}
-          <Pressable
-            onPress={() => {
-              haptics.light();
-              setSelectedPlan('yearly');
-            }}
-            style={[
-              styles.planCard,
-              styles.recommendedCard,
-              {
-                backgroundColor: theme.card,
-                borderColor: selectedPlan === 'yearly' ? theme.coral : theme.cardBorder,
-              },
-            ]}
-          >
-            <View style={[styles.recommendedBadge, { backgroundColor: theme.coral }]}>
-              <Text style={styles.recommendedBadgeText}>RECOMMENDED</Text>
-            </View>
-
-            <Text style={[styles.planName, { color: theme.text }]}>Yearly</Text>
-            <View style={styles.priceRow}>
-              <Text style={[styles.planPrice, { color: theme.text }]}>$79.99</Text>
-              <Text style={[styles.planPeriod, { color: theme.secondaryText }]}>/yr</Text>
-            </View>
-            <Text style={[styles.savingsText, { color: theme.coral }]}>
-              Save 33% ($6.66/mo)
-            </Text>
-          </Pressable>
-
-          {/* Lifetime */}
-          <Pressable
-            onPress={() => {
-              haptics.light();
-              setSelectedPlan('lifetime');
-            }}
-            style={[
-              styles.planCard,
-              {
-                backgroundColor: theme.card,
-                borderColor: selectedPlan === 'lifetime' ? theme.coral : theme.cardBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.planName, { color: theme.text }]}>Lifetime</Text>
-            <Text style={[styles.planPrice, { color: theme.text }]}>$249</Text>
-            <Text style={[styles.savingsText, { color: theme.secondaryText }]}>
-              One-time payment
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* Start Free Trial CTA */}
+        {/* Start Checkout CTA */}
         <View style={styles.ctaArea}>
           <Button
-            title="Activate Premium Access"
-            onPress={handleStartTrial}
+            title={
+              submitting
+                ? 'Redirecting to Stripe...'
+                : `Subscribe to ${selectedTier === 'pro_family' ? 'Pro + Family' : 'Pro'}`
+            }
+            onPress={handleCheckout}
             variant="coral"
             size="lg"
+            disabled={submitting}
           />
 
           <Pressable
@@ -269,34 +381,105 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   heroPreview: {
-    height: 120,
+    height: 100,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
   heroGlow: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
   },
   headlineArea: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   headline: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     textAlign: 'center',
-    letterSpacing: -0.6,
-    lineHeight: 34,
-    marginBottom: 8,
+    letterSpacing: -0.5,
+    lineHeight: 30,
+    marginBottom: 6,
   },
   subheadline: {
-    fontSize: 15,
+    fontSize: 14,
     textAlign: 'center',
+    paddingHorizontal: 12,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    borderRadius: radii.full,
+    padding: 4,
+    marginBottom: 20,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radii.full,
+    alignItems: 'center',
+  },
+  toggleText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  plansContainer: {
+    gap: 16,
+    marginBottom: 24,
+  },
+  planCard: {
+    borderRadius: radii['2xl'],
+    borderWidth: 2,
+    padding: 16,
+    position: 'relative',
+  },
+  recommendedCard: {
+    position: 'relative',
+  },
+  recommendedBadge: {
+    position: 'absolute',
+    top: -12,
+    alignSelf: 'center',
+    borderRadius: radii.full,
+    paddingHorizontal: 14,
+    paddingVertical: 3,
+  },
+  recommendedBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
+  },
+  planHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  planName: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  planSub: {
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  planPrice: {
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  planPeriod: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 16,
@@ -313,76 +496,25 @@ const styles = StyleSheet.create({
   },
   featureTile: {
     width: '48%',
-    height: 100,
+    height: 90,
     borderRadius: radii['2xl'],
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
+    padding: 10,
   },
   featureIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
-  },
-  featureTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  plansContainer: {
-    gap: 14,
-    marginBottom: 28,
-  },
-  planCard: {
-    borderRadius: radii['3xl'],
-    borderWidth: 2,
-    padding: 18,
-    position: 'relative',
-  },
-  recommendedCard: {
-    position: 'relative',
-  },
-  recommendedBadge: {
-    position: 'absolute',
-    top: -12,
-    alignSelf: 'center',
-    borderRadius: radii.full,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-  },
-  recommendedBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.8,
-  },
-  planName: {
-    fontSize: 16,
-    fontWeight: '700',
     marginBottom: 4,
   },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  planPrice: {
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  planPeriod: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  savingsText: {
-    fontSize: 13,
-    marginTop: 2,
-    fontWeight: '600',
+  featureTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   ctaArea: {
     alignItems: 'center',

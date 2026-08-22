@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Remio",
+    "name": "RoutineAI",
     "slug": "routine-ai-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -22,7 +22,9 @@
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
-        "VIBRATE"
+        "VIBRATE",
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED"
       ],
       "predictiveBackGestureEnabled": false
     },
@@ -38,6 +40,13 @@
           "backgroundColor": "#FFFFFF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#111827"
         }
       ]
     ],

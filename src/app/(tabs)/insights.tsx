@@ -42,14 +42,14 @@ export default function InsightsScreen() {
     suggestionTitle: string;
     suggestionDesc: string;
   }>({
-    overallConsistency: 92,
+    overallConsistency: 0,
     tasksCompleted: 0,
-    currentStreak: 7,
-    avgCompletionDays: 28,
-    aiAccuracy: 95,
-    suggestionTitle: 'Routine AI Recommendation',
+    currentStreak: 0,
+    avgCompletionDays: 0,
+    aiAccuracy: 0,
+    suggestionTitle: 'Remio Intelligence',
     suggestionDesc:
-      'Keep logging your routine completions consistently so our predictive model can pinpoint your ideal scheduling windows.',
+      'Log your routine completions consistently so our predictive model can pinpoint your ideal scheduling windows.',
   });
 
   const loadInsights = async () => {
@@ -61,26 +61,41 @@ export default function InsightsScreen() {
       ]);
 
       const completedCount = insights?.completedTasks ?? 0;
-      const consistencyScore = insights?.onTimeCompletionPercentage
-        ? Math.round(insights.onTimeCompletionPercentage)
-        : Math.min(96, Math.max(80, 85 + completedCount * 2));
+      const consistencyScore =
+        insights?.onTimeCompletionPercentage !== null && insights?.onTimeCompletionPercentage !== undefined
+          ? Math.round(insights.onTimeCompletionPercentage)
+          : completedCount > 0
+          ? 100
+          : 0;
 
-      const avgInterval = insights?.averageCompletionInterval
-        ? Math.round(insights.averageCompletionInterval)
-        : 28;
+      const avgInterval =
+        insights?.averageCompletionInterval !== null && insights?.averageCompletionInterval !== undefined
+          ? Math.round(insights.averageCompletionInterval)
+          : 0;
 
-      const coachSummary = coach?.summary ||
+      const activeTasksWithPred = tasks.filter((t) => t.confidence > 0);
+      const avgConfidence =
+        activeTasksWithPred.length > 0
+          ? Math.round(
+              activeTasksWithPred.reduce((sum, t) => sum + t.confidence, 0) / activeTasksWithPred.length
+            )
+          : 0;
+
+      const coachSummary =
+        coach?.summary ||
         (insights?.mostConsistentTask
           ? `Your most consistent habit is ${insights.mostConsistentTask.title}. Keep it up!`
-          : 'Complete tasks regularly to sharpen your AI routine predictions.');
+          : completedCount < 2
+          ? 'Complete your routines at least twice so Remio can calculate accurate intervals and predictions.'
+          : 'Great progress! Your routine habits are actively training the predictive model.');
 
       setInsightsData({
         overallConsistency: consistencyScore,
         tasksCompleted: completedCount,
-        currentStreak: Math.max(1, Math.min(45, completedCount * 3 + 4)),
+        currentStreak: completedCount > 0 ? Math.min(completedCount, 30) : 0,
         avgCompletionDays: avgInterval,
-        aiAccuracy: Math.min(98, Math.max(88, consistencyScore + 2)),
-        suggestionTitle: 'Routine AI Coach',
+        aiAccuracy: avgConfidence,
+        suggestionTitle: 'Remio Insight',
         suggestionDesc: coachSummary,
       });
     } catch {
@@ -104,8 +119,8 @@ export default function InsightsScreen() {
   const handleEnableSmartMode = () => {
     haptics.success();
     Alert.alert(
-      'Smart Mode Active',
-      'Routine AI is continuously monitoring task patterns and refining predictive intervals.'
+      'Insight Acknowledged',
+      'Remio will keep analyzing your completion patterns to optimize your routine intervals.'
     );
   };
 
@@ -119,14 +134,14 @@ export default function InsightsScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.primary}
-            colors={[theme.coral]}
+            colors={[theme.primary]}
           />
         }
       >
         {/* Top Header */}
         <View style={styles.header}>
-          <Text style={[styles.brandTitle, { color: theme.text }]}>Routine AI</Text>
-          <Sparkles size={24} color={theme.coral} />
+          <Text style={[styles.brandTitle, { color: theme.text }]}>Remio</Text>
+          <Sparkles size={22} color={theme.text} />
         </View>
 
         {/* Title Area */}
@@ -137,7 +152,7 @@ export default function InsightsScreen() {
           </Text>
         </View>
 
-        {/* Top Overall Consistency Card with SVG Ring */}
+        {/* Top Routine Health Card */}
         <View
           style={[
             styles.consistencyCard,
@@ -154,9 +169,9 @@ export default function InsightsScreen() {
                 { backgroundColor: theme.card, borderColor: theme.border },
               ]}
             >
-              <TrendingUp size={13} color={theme.teal} />
+              <TrendingUp size={13} color={theme.text} />
               <Text style={[styles.topBadgeText, { color: theme.text }]}>
-                Routine Health Rating
+                ROUTINE HEALTH
               </Text>
             </View>
           </View>
@@ -165,15 +180,15 @@ export default function InsightsScreen() {
             Overall Consistency
           </Text>
           <Text style={[styles.consistencyDesc, { color: theme.secondaryText }]}>
-            Your habit tracking stability across all active categories. Higher consistency improves prediction accuracy.
+            You're consistently completing your recurring routines.
           </Text>
 
           <View style={styles.ringWrapper}>
             <ProgressRing
               progress={insightsData.overallConsistency}
-              size={170}
-              strokeWidth={18}
-              color={theme.coral}
+              size={160}
+              strokeWidth={16}
+              color={theme.primary}
               backgroundColor={theme.border}
             />
           </View>
@@ -193,7 +208,7 @@ export default function InsightsScreen() {
           >
             <View>
               <Text style={[styles.microLabel, { color: theme.mutedText }]}>
-                ESTIMATED STREAK
+                CURRENT STREAK
               </Text>
               <View style={styles.valueRow}>
                 <Text style={[styles.metricNumber, { color: theme.text }]}>
@@ -205,7 +220,7 @@ export default function InsightsScreen() {
               </View>
             </View>
             <View style={[styles.metricIconCircle, { backgroundColor: theme.card }]}>
-              <Flame size={20} color={theme.coral} />
+              <Flame size={20} color={theme.text} />
             </View>
           </View>
 
@@ -228,11 +243,11 @@ export default function InsightsScreen() {
               </Text>
             </View>
             <View style={[styles.metricIconCircle, { backgroundColor: theme.card }]}>
-              <CheckCircle2 size={20} color={theme.green} />
+              <CheckCircle2 size={20} color={theme.text} />
             </View>
           </View>
 
-          {/* Avg Completion */}
+          {/* Avg Interval */}
           <View
             style={[
               styles.metricCard,
@@ -244,7 +259,7 @@ export default function InsightsScreen() {
           >
             <View>
               <Text style={[styles.microLabel, { color: theme.mutedText }]}>
-                AVG. INTERVAL
+                AVERAGE INTERVAL
               </Text>
               <View style={styles.valueRow}>
                 <Text style={[styles.metricNumber, { color: theme.text }]}>
@@ -256,11 +271,11 @@ export default function InsightsScreen() {
               </View>
             </View>
             <View style={[styles.metricIconCircle, { backgroundColor: theme.card }]}>
-              <RotateCw size={20} color={theme.teal} />
+              <RotateCw size={20} color={theme.text} />
             </View>
           </View>
 
-          {/* AI Accuracy */}
+          {/* Prediction Confidence */}
           <View
             style={[
               styles.metricCard,
@@ -272,14 +287,14 @@ export default function InsightsScreen() {
           >
             <View>
               <Text style={[styles.microLabel, { color: theme.mutedText }]}>
-                PREDICTION ACCURACY
+                PREDICTION CONFIDENCE
               </Text>
-              <Text style={[styles.metricNumber, { color: theme.teal }]}>
+              <Text style={[styles.metricNumber, { color: theme.text }]}>
                 {insightsData.aiAccuracy}%
               </Text>
             </View>
             <View style={[styles.metricIconCircle, { backgroundColor: theme.card }]}>
-              <Brain size={20} color={theme.teal} />
+              <Brain size={20} color={theme.text} />
             </View>
           </View>
         </View>
@@ -295,7 +310,7 @@ export default function InsightsScreen() {
           ]}
         >
           <View style={styles.suggestionHeader}>
-            <Lightbulb size={18} color={theme.coral} />
+            <Lightbulb size={18} color={theme.text} />
             <Text style={[styles.suggestionTitle, { color: theme.text }]}>
               {insightsData.suggestionTitle}
             </Text>

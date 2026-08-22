@@ -124,8 +124,8 @@ export const Button: React.FC<ButtonProps> = ({
       case 'lg':
       default:
         return {
-          button: { height: 58, paddingHorizontal: 28 },
-          text: { fontSize: 17, fontWeight: '600' },
+          button: { height: 56, paddingHorizontal: 24 },
+          text: { fontSize: 16, fontWeight: '700' },
         };
     }
   };
@@ -166,7 +166,7 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   baseButton: {
-    borderRadius: radii.full,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -179,6 +179,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   disabled: {
-    opacity: 0.5,
+    opacity: 0.4,
+    backgroundColor: '#9CA3AF',
   },
 });

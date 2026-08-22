@@ -52,16 +52,16 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onPress }) => {
           ]}
         >
           <Check
-            size={14}
+            size={13}
             color={theme.isDark ? '#0B0C10' : '#FFFFFF'}
             strokeWidth={3}
           />
         </View>
       </View>
 
-      {/* Badges / Prediction metrics */}
-      <View style={styles.badgeRow}>
-        {item.aiAccuracyBadge && (
+      {/* Small Outlined AI Confidence Pill */}
+      {item.aiAccuracyBadge && (
+        <View style={styles.badgeRow}>
           <View
             style={[
               styles.badge,
@@ -71,39 +71,21 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onPress }) => {
               },
             ]}
           >
-            <Sparkles size={12} color={theme.teal} />
-            <Text style={[styles.badgeText, { color: theme.text }]}>
+            <Text style={[styles.badgeText, { color: theme.secondaryText }]}>
               {item.aiAccuracyBadge}
             </Text>
           </View>
-        )}
-
-        {item.nextPredictionDays !== undefined && (
-          <View
-            style={[
-              styles.badge,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-              },
-            ]}
-          >
-            <Calendar size={12} color={theme.coral} />
-            <Text style={[styles.badgeText, { color: theme.text }]}>
-              Next Prediction {item.nextPredictionDays} Days
-            </Text>
-          </View>
-        )}
-      </View>
+        </View>
+      )}
     </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: radii['3xl'],
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: radii['2xl'],
+    padding: 14,
+    marginBottom: 10,
     borderWidth: 1,
   },
   pressed: {
@@ -114,54 +96,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
     borderWidth: 1,
   },
   emojiText: {
-    fontSize: 18,
+    fontSize: 16,
   },
   infoCol: {
     flex: 1,
   },
   title: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
+    letterSpacing: -0.2,
   },
   timeString: {
-    fontSize: 13,
+    fontSize: 12.5,
     marginTop: 2,
   },
   checkCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeRow: {
-    marginTop: 10,
-    paddingLeft: 52,
+    marginTop: 8,
+    paddingLeft: 50,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
   },
   badge: {
-    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: radii.full,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     borderWidth: 1,
   },
   badgeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });

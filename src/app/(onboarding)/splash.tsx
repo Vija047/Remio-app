@@ -79,9 +79,9 @@ export default function SplashScreen() {
 
       {/* Content & Action Area */}
       <View style={styles.contentArea}>
-        <Text style={styles.brandTitle}>Routine AI</Text>
+        <Text style={styles.brandTitle}>Remio</Text>
         <Text style={styles.subtitle}>
-          The AI that remembers what you usually forget.
+          The adaptive habit manager that remembers what you usually forget.
         </Text>
 
         <View style={styles.actionsContainer}>

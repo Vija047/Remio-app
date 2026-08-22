@@ -51,7 +51,7 @@ export default function AIPredictionDetailsScreen() {
     haptics.success();
     Alert.alert(
       'Optimal Reminder Scheduled',
-      `Routine AI set a notification for your predicted optimal day: Day ${activePrediction?.bestDay || 30}.`
+      `Remio set a notification for your predicted optimal day: Day ${activePrediction?.bestDay || 30}.`
     );
   };
 
@@ -59,18 +59,22 @@ export default function AIPredictionDetailsScreen() {
     taskId: targetTask?.id || 'task-default',
     title: targetTask?.title || 'Routine Task',
     emoji: targetTask?.emoji || '✨',
-    confidence: targetTask?.confidence || 92,
-    avgIntervalDays: targetTask?.intervalDays || 30,
-    startDay: Math.max(1, (targetTask?.intervalDays || 30) - 4),
-    bestDay: targetTask?.intervalDays || 30,
-    deadlineDay: (targetTask?.intervalDays || 30) + 4,
-    idealWindowText: 'Between Day 26 – 34',
+    confidence: targetTask?.confidence || 0,
+    avgIntervalDays: targetTask?.intervalDays || 0,
+    startDay: Math.max(1, (targetTask?.intervalDays || 0) - 2),
+    bestDay: targetTask?.intervalDays || 0,
+    deadlineDay: (targetTask?.intervalDays || 0) + 2,
+    idealWindowText: (targetTask?.confidence && targetTask.confidence > 0)
+      ? `Around every ${targetTask.intervalDays} days`
+      : 'Learning Schedule (Need ≥ 2 completions)',
     insightsText:
-      'Routine AI computed this schedule based on your completion history to keep you consistent without stress.',
+      (targetTask?.confidence && targetTask.confidence > 0)
+        ? 'Remio computed this schedule based on your completion history to keep you consistent without stress.'
+        : 'Remio is analyzing your routine. Complete this task at least twice to establish predictive intelligence.',
     learningLogicText:
-      'Each time you log a task completion, Routine AI refines its predictive model to match your natural schedule.',
-    lastPrediction: Math.max(1, (targetTask?.intervalDays || 30) - 2),
-    newPrediction: targetTask?.intervalDays || 30,
+      'Each time you log a task completion, Remio refines its predictive model using EWMA and median interval regression.',
+    lastPrediction: targetTask?.intervalDays || 0,
+    newPrediction: targetTask?.intervalDays || 0,
   };
 
   return (
@@ -156,7 +160,7 @@ export default function AIPredictionDetailsScreen() {
               <Brain size={18} color={theme.coral} />
             </View>
             <Text style={[styles.insightsTitle, { color: theme.text }]}>
-              Routine AI Insights
+              Remio Insights
             </Text>
           </View>
 

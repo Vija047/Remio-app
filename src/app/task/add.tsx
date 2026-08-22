@@ -33,6 +33,7 @@ import { useTaskStore } from '../../store/useTaskStore';
 import { useTheme } from '../../hooks/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
 import { api } from '../../services/api';
+import { toLocalDateString } from '../../utils/dateUtils';
 
 interface CategoryGridItem {
   id: string;
@@ -61,8 +62,9 @@ export default function AddTaskScreen() {
   const [title, setTitle] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('personal');
   const [lastCompletedDate, setLastCompletedDate] = useState(
-    new Date().toISOString().split('T')[0]
+    toLocalDateString(new Date())
   );
+
   const [reminderType, setReminderType] = useState<'ai' | 'manual'>('ai');
   const [reminderTime, setReminderTime] = useState('09:00');
   const [notes, setNotes] = useState('');
@@ -87,8 +89,9 @@ export default function AddTaskScreen() {
           const matched = CATEGORY_ITEMS.find((c) => c.id === parsed.category.toLowerCase());
           if (matched) setSelectedCategory(matched.id);
         }
-        if (parsed.reminderTime) setReminderTime(parsed.reminderTime);
-        if (parsed.notes) setNotes(parsed.notes);
+        if (parsed.description || parsed.notes) {
+          setNotes(parsed.description || parsed.notes || '');
+        }
         haptics.success();
         setShowAiParser(false);
       }
@@ -114,7 +117,7 @@ export default function AddTaskScreen() {
         title: title.trim(),
         category: selectedCategory,
         description: notes.trim() || undefined,
-        reminderEnabled: reminderType === 'ai',
+        reminderEnabled: true,
         reminderTime: reminderTime,
         lastCompletedDate: lastCompletedDate || undefined,
       });
@@ -304,7 +307,7 @@ export default function AddTaskScreen() {
         </View>
 
         <Text style={[styles.reminderExplainer, { color: theme.secondaryText }]}>
-          Routine AI will automatically predict optimal recurring intervals based on your actual completion habits.
+          Remio will automatically predict optimal recurring intervals based on your actual completion habits.
         </Text>
 
         {/* Optional Notes */}

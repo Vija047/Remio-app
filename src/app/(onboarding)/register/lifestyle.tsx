@@ -105,7 +105,7 @@ export default function RegisterLifestyleScreen() {
         </View>
 
         {/* Progress Bar (50%) */}
-        <ProgressBar progress={50} height={4} color={colors.primary} style={styles.progressBar} />
+        <ProgressBar progress={50} height={6} color={colors.primary} style={styles.progressBar} />
 
         {/* Content Area */}
         <View style={styles.content}>

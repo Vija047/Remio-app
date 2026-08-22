@@ -1,6 +1,11 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Task, Category, HistoryLogItem } from '../types';
 import { api } from '../services/api';
+import { notificationService } from '../services/notificationService';
+import { toLocalDateString } from '../utils/dateUtils';
+
+const CATEGORIES_STORAGE_KEY = 'routine_ai_user_categories';
 
 interface TaskState {
   tasks: Task[];
@@ -8,6 +13,8 @@ interface TaskState {
   historyLogs: HistoryLogItem[];
   searchQuery: string;
   activeFilter: 'All' | 'Completed' | 'Overdue' | 'Upcoming';
+  completingTaskIds: string[];
+  lastToggleTimes: Record<string, number>;
   isLoading: boolean;
   error: string | null;
 
@@ -31,6 +38,7 @@ interface TaskState {
   reorderCategories: (categories: Category[]) => void;
   deleteCategory: (categoryId: string) => void;
   clearHistory: () => void;
+  resetTaskStore: () => void;
 }
 
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -68,7 +76,13 @@ function calculateDueLabel(
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
-  const due = new Date(predictedDateStr);
+  const parts = predictedDateStr.split('-');
+  let due: Date;
+  if (parts.length === 3) {
+    due = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  } else {
+    due = new Date(predictedDateStr);
+  }
   due.setHours(0, 0, 0, 0);
 
   const diffMs = due.getTime() - now.getTime();
@@ -101,6 +115,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   historyLogs: [],
   searchQuery: '',
   activeFilter: 'All',
+  completingTaskIds: [],
+  lastToggleTimes: {},
   isLoading: false,
   error: null,
 
@@ -115,34 +131,34 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const mappedTasks: Task[] = rawTasks.map((t) => {
         const lastCompletion = t.completions && t.completions[0];
         const lastCompletedDate = lastCompletion
-          ? lastCompletion.completedAt.split('T')[0]
-          : t.createdAt.split('T')[0];
+          ? toLocalDateString(lastCompletion.completedAt)
+          : toLocalDateString(t.createdAt);
 
         const predictedDateStr = t.prediction?.predictedDate
-          ? t.prediction.predictedDate.split('T')[0]
+          ? toLocalDateString(t.prediction.predictedDate)
           : undefined;
 
         const { dueLabel, smartWindowStatus } = calculateDueLabel(predictedDateStr);
 
         const confidenceVal = t.prediction?.confidenceScore
           ? Math.round(Number(t.prediction.confidenceScore) * 100)
-          : 90;
+          : 0;
 
         const intervalDays = t.prediction?.averageIntervalDays
           ? Math.round(Number(t.prediction.averageIntervalDays))
-          : 30;
+          : 0;
 
         const historyItems = (t.completions || []).map((c) => ({
           id: c.id,
-          date: c.completedAt.split('T')[0],
+          date: toLocalDateString(c.completedAt),
           formattedDate: formatTaskDate(c.completedAt),
           notes: c.notes,
         }));
 
         // Check if completed today
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = toLocalDateString(new Date());
         const isCompletedToday = lastCompletion
-          ? lastCompletion.completedAt.split('T')[0] === todayStr
+          ? toLocalDateString(lastCompletion.completedAt) === todayStr
           : false;
 
         return {
@@ -157,7 +173,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           smartWindowStatus,
           confidence: confidenceVal,
           isAiSuggested: !!t.prediction,
-          completed: isCompletedToday,
+          completed: false, // Active routines are not crossed out
           reminderType: t.reminderEnabled ? 'ai' : 'manual',
           notes: t.description,
           history: historyItems,
@@ -165,6 +181,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       });
 
       set({ tasks: mappedTasks, isLoading: false });
+      notificationService.syncAllTaskReminders(mappedTasks).catch(() => {});
+      notificationService.evaluateAndSendSmartReminders(mappedTasks).catch(() => {});
     } catch (err: any) {
       set({ isLoading: false, error: err.message });
     }
@@ -191,22 +209,50 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   toggleTaskCompleted: async (taskId, notes) => {
+    const lastTime = get().lastToggleTimes[taskId] || 0;
+    const nowMs = Date.now();
+    if (get().completingTaskIds.includes(taskId) || nowMs - lastTime < 500) {
+      return;
+    }
+
+    const targetTask = get().tasks.find((t) => t.id === taskId);
+    const isCurrentlyCompleted = targetTask?.completed;
+
     try {
-      const now = new Date();
-      await api.completeTask(taskId, {
-        notes: notes || 'Completed via Routine AI',
-        completedAt: now.toISOString(),
-      });
+      set((state) => ({
+        lastToggleTimes: { ...state.lastToggleTimes, [taskId]: nowMs },
+        completingTaskIds: [...state.completingTaskIds, taskId],
+        tasks: state.tasks.map((t) =>
+          t.id === taskId ? { ...t, completed: !t.completed } : t
+        ),
+      }));
+
+      if (isCurrentlyCompleted) {
+        // User is uncompleting / undoing completion
+        await api.uncompleteTask(taskId);
+      } else {
+        // User is marking task complete
+        const now = new Date();
+        await api.completeTask(taskId, {
+          notes: notes || 'Completed via Remio',
+          completedAt: now.toISOString(),
+        });
+      }
 
       await get().fetchTasks();
       await get().fetchHistory();
     } catch (err: any) {
       set({ error: err.message });
+    } finally {
+      set((state) => ({
+        completingTaskIds: state.completingTaskIds.filter((id) => id !== taskId),
+      }));
     }
   },
 
   deleteTask: async (taskId) => {
     try {
+      notificationService.cancelTaskReminder(taskId).catch(() => {});
       await api.deleteTask(taskId);
       set((state) => ({
         tasks: state.tasks.filter((t) => t.id !== taskId),
@@ -230,14 +276,25 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       const logs = await api.getAllHistory();
       const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
+      const todayStr = toLocalDateString(now);
 
       const yesterday = new Date(now);
       yesterday.setDate(now.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      const yesterdayStr = toLocalDateString(yesterday);
 
-      const mappedLogs: HistoryLogItem[] = logs.map((log) => {
-        const dateStr = log.completedAt.split('T')[0];
+      // Deduplicate history logs with same taskId and matching minute timestamp
+      const seen = new Set<string>();
+      const deduplicatedLogs = [];
+      for (const log of logs) {
+        const minuteKey = `${log.taskId}_${log.completedAt ? log.completedAt.substring(0, 16) : log.id}`;
+        if (!seen.has(minuteKey)) {
+          seen.add(minuteKey);
+          deduplicatedLogs.push(log);
+        }
+      }
+
+      const mappedLogs: HistoryLogItem[] = deduplicatedLogs.map((log) => {
+        const dateStr = toLocalDateString(log.completedAt);
         const dateObj = new Date(log.completedAt);
         const timeFormatted = isNaN(dateObj.getTime())
           ? ''
@@ -275,7 +332,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           timeString,
           section,
           aiAccuracyBadge: log.task?.prediction?.confidenceScore
-            ? `AI Prediction Accuracy ${Math.round(Number(log.task.prediction.confidenceScore) * 100)}%`
+            ? `AI confidence · ${Math.round(Number(log.task.prediction.confidenceScore) * 100)}%`
             : undefined,
         };
       });
@@ -293,16 +350,48 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       order: get().categories.length + 1,
       isCustom: true,
     };
-    set((state) => ({ categories: [...state.categories, newCat] }));
+    const updated = [...get().categories, newCat];
+    set({ categories: updated });
+    AsyncStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
   },
 
-  reorderCategories: (categories) => set({ categories }),
+  reorderCategories: (categories) => {
+    set({ categories });
+    AsyncStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories)).catch(() => {});
+  },
 
   deleteCategory: (categoryId) => {
-    set((state) => ({
-      categories: state.categories.filter((c) => c.id !== categoryId),
-    }));
+    const updated = get().categories.filter((c) => c.id !== categoryId);
+    set({ categories: updated });
+    AsyncStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
   },
 
   clearHistory: () => set({ historyLogs: [] }),
+  resetTaskStore: () =>
+    set({
+      tasks: [],
+      historyLogs: [],
+      searchQuery: '',
+      activeFilter: 'All',
+      completingTaskIds: [],
+      isLoading: false,
+      error: null,
+    }),
 }));
+
+// Initialize categories from local storage if previously saved
+AsyncStorage.getItem(CATEGORIES_STORAGE_KEY)
+  .then((saved) => {
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          useTaskStore.setState({ categories: parsed });
+        }
+      } catch {
+        // ignore JSON parse errors
+      }
+    }
+  })
+  .catch(() => {});
+

@@ -49,67 +49,75 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   style,
 }) => {
   return (
-    <View style={[styles.container, style]}>
-      <Pressable
-        onPress={onPress}
-        disabled={disabled || loading}
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-        ]}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color="#1F1F1F" />
-        ) : (
-          <View style={styles.contentRow}>
-            <GoogleIcon size={16} />
-            <Text style={styles.buttonText} numberOfLines={1} ellipsizeMode="tail">
-              {title}
-            </Text>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || loading}
+      style={({ pressed }) => [
+        styles.button,
+        pressed && styles.buttonPressed,
+        disabled && styles.buttonDisabled,
+        style,
+      ]}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color="#111217" />
+      ) : (
+        <View style={styles.contentRow}>
+          <View style={styles.iconContainer}>
+            <GoogleIcon size={20} />
           </View>
-        )}
-      </Pressable>
-    </View>
+          <Text style={styles.buttonText} numberOfLines={1} ellipsizeMode="tail">
+            {title}
+          </Text>
+        </View>
+      )}
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   button: {
-    height: 38,
-    borderRadius: 19,
+    width: '100%',
+    alignSelf: 'stretch',
+    height: 56,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 1.5,
+    borderColor: '#D9DDE3',
+    borderStyle: 'solid',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
-    shadowColor: '#000',
+    paddingHorizontal: 20,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 2,
     elevation: 1,
   },
   buttonPressed: {
     opacity: 0.85,
-    backgroundColor: '#F9FAFB',
-    transform: [{ scale: 0.98 }],
+    backgroundColor: '#F3F4F6',
+    borderColor: '#CBD5E1',
+    transform: [{ scale: 0.99 }],
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+  },
+  iconContainer: {
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonText: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#1F1F1F',
-    letterSpacing: -0.1,
+    color: '#111217',
+    letterSpacing: -0.2,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
 });

@@ -41,6 +41,7 @@ export default function TaskDetailsScreen() {
   const haptics = useHaptics();
 
   const tasks = useTaskStore((s) => s.tasks);
+  const completingTaskIds = useTaskStore((s) => s.completingTaskIds);
   const toggleTaskCompleted = useTaskStore((s) => s.toggleTaskCompleted);
   const deleteTask = useTaskStore((s) => s.deleteTask);
   const updateTask = useTaskStore((s) => s.updateTask);
@@ -48,6 +49,8 @@ export default function TaskDetailsScreen() {
   const [loadingAction, setLoadingAction] = useState(false);
 
   const task = tasks.find((t) => t.id === id);
+  const isCompleting = task ? completingTaskIds.includes(task.id) : false;
+  const isBusy = loadingAction || isCompleting;
 
   const getTaskIcon = () => {
     if (!task) return <FileText size={26} color={theme.text} />;
@@ -74,7 +77,7 @@ export default function TaskDetailsScreen() {
   };
 
   const handleCompleteToday = async () => {
-    if (!task) return;
+    if (!task || isBusy) return;
     try {
       setLoadingAction(true);
       haptics.success();
@@ -85,6 +88,7 @@ export default function TaskDetailsScreen() {
       setLoadingAction(false);
     }
   };
+
 
   const handleDelete = () => {
     if (!task) return;
@@ -137,13 +141,30 @@ export default function TaskDetailsScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)/today');
+              }
+            }}
+            style={styles.backBtn}
+          >
             <ChevronLeft size={26} color={theme.text} />
           </Pressable>
         </View>
         <View style={styles.notFoundContainer}>
-          <Text style={[styles.notFoundText, { color: theme.text }]}>Routine not found</Text>
-          <Button title="Go Back" onPress={() => router.back()} size="md" variant="primary" />
+          <Text style={[styles.notFoundTitle, { color: theme.text }]}>This routine was removed</Text>
+          <Text style={[styles.notFoundSubtitle, { color: theme.secondaryText }]}>
+            This routine has been deleted or is no longer available.
+          </Text>
+          <Button
+            title="Back to Today"
+            onPress={() => router.replace('/(tabs)/today')}
+            size="md"
+            variant="primary"
+          />
         </View>
       </SafeAreaView>
     );
@@ -201,12 +222,25 @@ export default function TaskDetailsScreen() {
             <View
               style={[
                 styles.aiPredictionBadge,
-                { backgroundColor: theme.cardMuted, borderColor: theme.border },
+                {
+                  backgroundColor: task.confidence > 0 ? theme.cardMuted : theme.coralLight,
+                  borderColor: task.confidence > 0 ? theme.border : theme.coral,
+                },
               ]}
             >
-              <View style={[styles.badgeDot, { backgroundColor: theme.teal }]} />
-              <Text style={[styles.aiPredictionText, { color: theme.text }]}>
-                AI PREDICTION
+              <View
+                style={[
+                  styles.badgeDot,
+                  { backgroundColor: task.confidence > 0 ? theme.teal : theme.coral },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.aiPredictionText,
+                  { color: task.confidence > 0 ? theme.text : theme.coral },
+                ]}
+              >
+                {task.confidence > 0 ? 'AI PREDICTION' : 'AI LEARNING'}
               </Text>
             </View>
           </View>
@@ -214,10 +248,10 @@ export default function TaskDetailsScreen() {
           <View style={[styles.smartWindowRow, { borderBottomColor: theme.divider }]}>
             <View>
               <Text style={[styles.subtext, { color: theme.secondaryText }]}>
-                Smart Window
+                {task.confidence > 0 ? 'Smart Window' : 'Learning Status'}
               </Text>
               <Text style={[styles.windowStatusText, { color: theme.text }]}>
-                {task.smartWindowStatus}
+                {task.confidence > 0 ? task.smartWindowStatus : 'Routine Learning'}
               </Text>
             </View>
             <View
@@ -245,16 +279,21 @@ export default function TaskDetailsScreen() {
                 <Text style={[styles.confidenceSubtext, { color: theme.secondaryText }]}>
                   Confidence
                 </Text>
-                <Text style={[styles.confidenceValueText, { color: theme.teal }]}>
-                  {task.confidence}%
+                <Text
+                  style={[
+                    styles.confidenceValueText,
+                    { color: task.confidence > 0 ? theme.teal : theme.secondaryText },
+                  ]}
+                >
+                  {task.confidence > 0 ? `${task.confidence}%` : 'Learning (0%)'}
                 </Text>
               </View>
             </View>
 
             <ProgressBar
-              progress={task.confidence}
+              progress={Math.max(5, task.confidence)}
               height={6}
-              color={theme.teal}
+              color={task.confidence > 0 ? theme.teal : theme.secondaryText}
               backgroundColor={theme.border}
               style={styles.confidenceBar}
             />
@@ -265,6 +304,7 @@ export default function TaskDetailsScreen() {
         <View style={styles.quickActionsRow}>
           <Pressable
             onPress={handleCompleteToday}
+            disabled={isBusy}
             style={({ pressed }) => [
               styles.actionPill,
               {
@@ -402,7 +442,7 @@ export default function TaskDetailsScreen() {
       >
         <Button
           title={
-            loadingAction
+            isBusy
               ? 'Updating...'
               : task.completed
               ? 'Completed Today ✓'
@@ -411,7 +451,7 @@ export default function TaskDetailsScreen() {
           onPress={handleCompleteToday}
           variant="primary"
           size="lg"
-          disabled={loadingAction}
+          disabled={isBusy}
           icon={<Check size={20} color="#FFFFFF" strokeWidth={3} />}
         />
       </View>
@@ -654,10 +694,17 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+    paddingHorizontal: 24,
+    gap: 12,
   },
-  notFoundText: {
-    fontSize: 18,
-    fontWeight: '700',
+  notFoundTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  notFoundSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 8,
   },
 });
